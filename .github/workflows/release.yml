@@ -1,0 +1,44 @@
+name: Build attested release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build-attest-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run full unit suite
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
+      - name: Build verified portable ZIP
+        id: package
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $bundle = Join-Path $env:RUNNER_TEMP "MochiCode-Auto-$version"
+          $archive = Join-Path $env:RUNNER_TEMP "MochiCode-Auto-$version.zip"
+          ./package.ps1 -Destination $bundle -ZipPath $archive -Version $version
+          ./verify-package.ps1 -ZipPath $archive -Quiet
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+      - name: Generate artifact attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ steps.package.outputs.archive }}
+      - name: Create release and upload attested ZIP
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $archive = '${{ steps.package.outputs.archive }}'
+          gh release create '${{ github.ref_name }}' $archive --verify-tag --generate-notes

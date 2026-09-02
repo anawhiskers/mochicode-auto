@@ -496,6 +496,37 @@ function Write-Manifest {
     }) 8
 }
 
+function Copy-SourceTreeFiltered {
+    param([string]$Root, [string]$Destination)
+    $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    $fullDestination = [System.IO.Path]::GetFullPath($Destination).TrimEnd('\', '/')
+    $transientDirectories = @('.git', '.pytest_cache', '__pycache__')
+    New-Item -ItemType Directory -Force -Path $fullDestination | Out-Null
+    foreach ($item in @(Get-ChildItem -LiteralPath $fullRoot -Recurse -Force)) {
+        $relative = [System.IO.Path]::GetRelativePath(
+            $fullRoot,
+            [System.IO.Path]::GetFullPath($item.FullName)
+        )
+        $parts = $relative.Replace('\', '/').Split('/')
+        if ($parts | Where-Object { $_ -in $transientDirectories }) {
+            continue
+        }
+        if (-not $item.PSIsContainer -and [System.IO.Path]::GetExtension($relative) -eq '.pyc') {
+            continue
+        }
+        Assert-NoReparseEscape $fullRoot $item.FullName 'Source package item'
+        $target = Join-Path $fullDestination $relative
+        Assert-NoReparseEscape $userRoot $target 'Installed plugin item'
+        if ($item.PSIsContainer) {
+            New-Item -ItemType Directory -Force -Path $target | Out-Null
+        } else {
+            $parent = Split-Path -Parent $target
+            New-Item -ItemType Directory -Force -Path $parent | Out-Null
+            Copy-Item -LiteralPath $item.FullName -Destination $target -Force
+        }
+    }
+}
+
 function Add-BackupEntry {
     param([string]$Path)
     $full = [System.IO.Path]::GetFullPath($Path)
@@ -644,13 +675,13 @@ function Set-MochiCodeMarkerBlock {
         '- Keep trivial lookups, tiny rewrites, one obvious reversible action, one-step navigation, and ordinary conversation direct in the current parent.'
         '- Sol High is the default substantive parent. It owns product, architecture, curriculum, visual design, UI/UX, interaction, motion, tightly coupled implementation, integration, debugging, live verification, and final judgment. Use Max only for consequential whole-product, architecture, security/release, or repeated quality-failure decisions; Ultra is exceptional.'
         '- Direct Sol is a stock-quality passthrough. Preserve the original goal and repository instructions; do not add planning ceremony, optional skills, workers, ledgers, or critics unless their concrete trigger becomes observable.'
-        '- Keep small or sequential routine work direct Sol. Use a real Luna Medium child only for a sizable independent implementation leaf whose parallelism, context isolation, or batch volume can repay handoff and review overhead. Escalate to Luna Max after failed acceptance or proven difficulty.'
+        '- Keep small or sequential routine work direct Sol. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, context isolation, or batch volume. Independence alone is insufficient. Escalate to Luna Max after failed acceptance or proven difficulty.'
         '- Never label parent-executed work as Luna. Report a child model and effort only when current session evidence or a real child receipt proves it.'
-        '- Fan out only frozen, disjoint leaves under a Sol parent. Start with two workers and cap normal live waves at three until a representative benchmark proves a larger wave improves accepted quality per token and wall time.'
+        '- Fan out only frozen, disjoint leaves under a Sol parent after predicting a concrete critical-path saving. Independence alone is insufficient. Start with two workers and cap normal live waves at three until a representative benchmark proves a larger wave improves accepted quality per token and wall time.'
         '- Terra is absent from the default native route. The deterministic controller and its Terra contract/review roles are experimental and must never be selected automatically until the published promotion defects are fixed and rebenchmarked.'
         '- For genuinely interruption-prone or multi-context work, keep a compact verified state ledger outside production paths. Do not add ledger ceremony to short tasks.'
-        '- Activate systematic debugging, TDD, long-horizon state, or critics only when their mechanism matches the task. Never run unbounded perfection loops.'
-        '- A warranted quality gate uses three fresh task-relevant read-only judges with distinct lenses, one Sol adjudication, at most one integrated repair pass, then the same hard checks and stop.'
+        '- Activate systematic debugging or TDD for security, concurrency, or data-integrity consequence, after incomplete diagnosis or failed first-pass acceptance, or when no executable reproduction exists. Do not force it merely because a bug is boundary-sensitive. Activate long-horizon state or critics only when their mechanism matches the task. Never run unbounded perfection loops.'
+        '- A warranted quality gate uses three fresh task-relevant read-only judges with distinct lenses, one Sol adjudication, at most one integrated repair pass, then the same hard checks and stop. For mixed UI-and-logic work, default to product hierarchy, accessibility and interaction, and state integration, and preserve unresolved visual preference for human comparison.'
         '- For consequential interactive behavior, verify running, paused, re-entrant, editing-during-execution, keyboard-focus, narrow-layout, and actual reduced-motion states when applicable.'
         '- A prompt beginning with `[MOCHICODE_CHILD]` performs only its assigned role and does not invoke a top-level workflow or spawn descendants.'
         '- Children never spawn grandchildren. Eight live children is a host ceiling, not a target. Preserve one writer per file or shared state, concise scoped context, and successive waves after completed children close.'
@@ -1433,7 +1464,7 @@ try {
     if ($UpdateExisting) {
         Remove-Item -LiteralPath $pluginTarget -Recurse -Force
     }
-    Copy-Item -LiteralPath $sourceRoot -Destination $pluginTarget -Recurse
+    Copy-SourceTreeFiltered -Root $sourceRoot -Destination $pluginTarget
     $installedManifestHash = Assert-InstalledPluginMatchesSource $pluginTarget $pluginVersion $sourceManifestHash
 
     Add-BackupEntry $marketplacePath

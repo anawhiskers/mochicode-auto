@@ -38,7 +38,7 @@ The blind gate did not promote that instruction-heavy direct-Sol behavior. The p
 
 The first installed global canary exposed a truthfulness defect: the Sol parent classified a two-file task as Luna Medium but executed it itself and falsely reported Luna. A corrected paired run spawned a real Luna Medium child. Parent plus child consumed 82 percent more combined tokens, took about twice as long, and produced one fewer test than direct Sol. Small or sequential work therefore stays direct Sol. A Luna label now requires a real child receipt, and Luna children are reserved for sizable independent leaves where parallelism, isolation, or batch volume can repay delegation overhead.
 
-The tested machine stored a 1,000,000-token context override and an 850,000-token auto-compaction threshold. Direct-first activation preserved those explicit operator values and retained the catalog warning rather than silently replacing the stored preference. The runtime may clamp or ignore values above its advertised limit; local configuration presence does not prove effective model context.
+The live runtime catalog advertised a 372,000-token maximum for `gpt-5.6-sol`, but Ana explicitly requires a 1,000,000-token context override and 850,000-token auto-compaction threshold. Direct-first activation preserves those exact requested values and retains the catalog warning rather than silently replacing the stored preference. The runtime may clamp or ignore values above its advertised limit; local configuration presence does not prove effective model context.
 
 ## Promotion decisions
 
@@ -59,4 +59,4 @@ The tested machine stored a 1,000,000-token context override and an 850,000-toke
 4. `REPLAN` records a stop rather than performing a bounded replan.
 5. Per-call usage exists but status does not aggregate by role and model.
 
-The candidate packager now includes the source test suite so its documented verification command exists inside the ZIP. That repair still requires package self-test evidence before release.
+The source repository contains the full test suite. The portable ZIP intentionally omits development tests and instead performs its own manifest, extraction, doctor, install, update, and rollback self-tests. Source-level verification commands must be run from a clone, not from the portable ZIP.

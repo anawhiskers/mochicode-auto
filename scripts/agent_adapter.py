@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 from datetime import UTC, datetime
+import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -172,8 +174,8 @@ def command_audit(args: argparse.Namespace) -> int:
     target = Path(args.target).resolve() if args.target else _default_target(args.agent, home)
     report: dict[str, Any] = {
         "agent": args.agent,
-        "workflow_template": str(TEMPLATE_ROOT / "CORE-WORKFLOW.md"),
-        "target": str(target) if target else None,
+        "workflow_template": "<plugin-root>/portable/templates/agent-adapters/CORE-WORKFLOW.md",
+        "target": _public_path(target, home) if target else None,
         "target_exists": target.is_file() if target else False,
         "model_change_policy": "report_candidate_only",
     }
@@ -192,6 +194,25 @@ def command_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def _public_path(path: Path, home: Path) -> str:
+    try:
+        relative = path.relative_to(home)
+    except ValueError:
+        return f"<external-target>/{path.name}"
+    return "<user-home>/" + relative.as_posix()
+
+
+def _default_backup_root(target: Path) -> Path:
+    local_data = os.environ.get("LOCALAPPDATA")
+    base = (
+        Path(local_data) / "MochiCode" / "agent-workflow-backups"
+        if local_data
+        else Path.home() / ".local" / "state" / "mochicode" / "agent-workflow-backups"
+    )
+    identity = hashlib.sha256(str(target).casefold().encode("utf-8")).hexdigest()[:16]
+    return base / identity
+
+
 def command_apply(args: argparse.Namespace) -> int:
     if not args.confirm:
         raise AdapterError("apply is a protected write; re-run with --confirm after reviewing audit output")
@@ -206,7 +227,11 @@ def command_apply(args: argparse.Namespace) -> int:
         raise AdapterError("target must be an AGENTS.md, AGENTS.override.md, or CLAUDE.md instruction file")
     target.parent.mkdir(parents=True, exist_ok=True)
     existing = target.read_text(encoding="utf-8") if target.exists() else ""
-    backup_root = Path(args.backup_root).resolve() if args.backup_root else target.parent / ".agent-workflow-backups"
+    backup_root = (
+        Path(args.backup_root).resolve()
+        if args.backup_root
+        else _default_backup_root(target)
+    )
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     backup_dir = backup_root / timestamp
     suffix = 1

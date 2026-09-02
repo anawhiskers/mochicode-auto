@@ -91,6 +91,10 @@ function Read-PackageJsonObject {
         [string]$Label = 'JSON file'
     )
 
+    $jsonItem = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ([int64]$jsonItem.Length -gt $script:PackageZipMaxEntryUncompressedBytes) {
+        throw "$Label exceeds the bounded file-size limit: $Path"
+    }
     $bytes = [System.IO.File]::ReadAllBytes($Path)
     try {
         $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)
@@ -176,7 +180,7 @@ function Assert-PackageManifest {
     if ([int64]$manifest.schema_version -ne 1) {
         throw 'Package manifest schema_version must be 1.'
     }
-    if ([string]$manifest.package_name -cne 'ana-codex-portable-ultimate') {
+    if ([string]$manifest.package_name -cne 'mochicode-auto-portable') {
         throw 'Package manifest package_name is unsupported.'
     }
     Assert-PackageString -Value $manifest.version -Label 'Package manifest version'
@@ -220,6 +224,12 @@ function Assert-PackageManifest {
     if ($fileCount -lt 1 -or $totalBytes -lt 0) {
         throw 'Package manifest counts are invalid.'
     }
+    if ($fileCount -gt $script:PackageZipMaxEntryCount) {
+        throw "Package manifest file_count exceeds limit of $($script:PackageZipMaxEntryCount)."
+    }
+    if ($totalBytes -gt $script:PackageZipMaxTotalUncompressedBytes) {
+        throw "Package manifest total_bytes exceeds limit of $($script:PackageZipMaxTotalUncompressedBytes)."
+    }
     if ($manifest.files -isnot [System.Array]) {
         throw 'Package manifest files must be an array.'
     }
@@ -256,6 +266,9 @@ function Assert-PackageManifest {
         [int64]$bytes = $entry.bytes
         if ($bytes -lt 0) {
             throw "Package manifest byte count is negative: $relative"
+        }
+        if ($bytes -gt $script:PackageZipMaxEntryUncompressedBytes) {
+            throw "Package manifest file exceeds byte limit of $($script:PackageZipMaxEntryUncompressedBytes): $relative"
         }
         if ($entry.sha256 -isnot [string] -or [string]$entry.sha256 -notmatch '^[0-9a-f]{64}$') {
             throw "Package manifest SHA-256 is invalid: $relative"
@@ -294,6 +307,9 @@ function Assert-PackageManifest {
         }
         if (-not $actualPaths.Add($relative)) {
             throw "Package contains duplicate case-insensitive paths: $relative"
+        }
+        if ($actualPaths.Count -gt $script:PackageZipMaxEntryCount) {
+            throw "Package file count exceeds limit of $($script:PackageZipMaxEntryCount)."
         }
         if (-not $paths.Contains($relative)) {
             throw "Package contains an unmanifested file: $relative"

@@ -271,7 +271,7 @@ function Test-PackageExcludedRelativePath {
         'benchmark-data', 'benchmark_work', 'work', 'working', 'runtime',
         'run', 'runs', 'state', 'learning', 'logs', 'log', 'evidence',
         'sessions', 'session', 'auth', 'authentication', 'credentials',
-        'secrets', 'private', 'tmp', 'temp'
+        'secrets', 'private', 'tmp', 'temp', '.agent-workflow-backups'
     )
     foreach ($part in $parts) {
         if ($runtimeDirectories -contains [string]$part) {
@@ -283,6 +283,9 @@ function Test-PackageExcludedRelativePath {
         return $true
     }
     if ($leaf -match '(?i)\.(?:log|trace|dmp|jsonl)$') {
+        return $true
+    }
+    if ($leaf -match '(?i)(?:\.bak|\.old|\.orig|~)$') {
         return $true
     }
     if ($leaf -match '^(?i:\.env(?:\..*)?)$') {
@@ -383,8 +386,11 @@ function Assert-PackageSafeTextBytes {
     $credentialPatterns = @(
         '(?im)-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----',
         '(?im)\b(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,})\b',
+        '(?im)\b(?:ASIA[0-9A-Z]{16}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|hf_[A-Za-z0-9_-]{20,}|npm_[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AIza[0-9A-Za-z_-]{30,})\b',
+        '(?im)\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b',
+        '(?im)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^/\s:@]+:[^@\s/]+@',
         '(?im)\bBearer\s+[A-Za-z0-9._~+/=-]{20,}',
-        '(?im)\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|secret|credential)\b\s*[:=]\s*["'']?(?!<[^>]+>|\$\{[^}]+\}|YOUR[_ -]?|REDACTED\b|REPLACE[_ -]?)[A-Za-z0-9+/_=.:-]{8,}'
+        '(?im)\b(?:api[_ -]?key|auth[_ -]?token|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|secret|credential|database[_ -]?url|dsn|jwt|pat|pwd|kubeconfig|docker[_ -]?config)\b\s*[:=]\s*["'']?(?!<[^>]+>|\$\{[^}]+\}|YOUR[_ -]?|REDACTED\b|REPLACE[_ -]?)[A-Za-z0-9+/_=.@:-]{8,}'
     )
     foreach ($pattern in $credentialPatterns) {
         if ($text -match $pattern) {

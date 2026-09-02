@@ -16,6 +16,12 @@ from typing import Any, TextIO
 from ctypes import wintypes
 
 from .config import ControllerConfig, RoleConfig
+from .process_safety import (
+    BoundedTextCapture,
+    RESOURCE_LIMIT_RETURN_CODE,
+    TRUNCATION_MARKER,
+    build_child_environment,
+)
 from .state import exclusive_file_lock
 
 
@@ -356,6 +362,7 @@ class InvocationResult:
     duration_seconds: float
     timed_out: bool = False
     stopped: bool = False
+    resource_limited: bool = False
 
 
 class CodexCliBackend:
@@ -565,20 +572,7 @@ class CodexCliBackend:
         stderr_path = invocation.event_log.with_suffix(".stderr.log")
         posix_supervisor_path: Path | None = None
         started = time.monotonic()
-        sensitive_markers = (
-            "API_KEY",
-            "AUTH",
-            "COOKIE",
-            "CREDENTIAL",
-            "PASSWORD",
-            "SECRET",
-            "TOKEN",
-        )
-        child_environment = {
-            key: value
-            for key, value in os.environ.items()
-            if not any(marker in key.upper() for marker in sensitive_markers)
-        }
+        child_environment = build_child_environment(os.environ)
         containment = _WindowsJob() if windows else None
         process: subprocess.Popen[str] | None = None
         process_group_id: int | None = None
@@ -688,25 +682,35 @@ class CodexCliBackend:
                 },
             )
 
-            stdout_lines: list[str] = []
-            stderr_lines: list[str] = []
+            output_limit_event = threading.Event()
+            stdout_capture = BoundedTextCapture(limit_event=output_limit_event)
+            stderr_capture = BoundedTextCapture(limit_event=output_limit_event)
 
-            def drain(stream: Any, path: Path, sink: list[str]) -> None:
+            def drain(stream: Any, path: Path, capture: BoundedTextCapture) -> None:
+                marker_written = False
                 with path.open("w", encoding="utf-8", newline="\n") as handle:
-                    for line in iter(stream.readline, ""):
-                        sink.append(line)
-                        handle.write(line)
-                        handle.flush()
+                    while True:
+                        chunk = stream.read(8192)
+                        if not chunk:
+                            break
+                        accepted = capture.append(chunk)
+                        if accepted:
+                            handle.write(accepted)
+                            handle.flush()
+                        if capture.truncated and not marker_written:
+                            handle.write(TRUNCATION_MARKER)
+                            handle.flush()
+                            marker_written = True
                 stream.close()
 
             stdout_thread = threading.Thread(
                 target=drain,
-                args=(process.stdout, invocation.event_log, stdout_lines),
+                args=(process.stdout, invocation.event_log, stdout_capture),
                 daemon=True,
             )
             stderr_thread = threading.Thread(
                 target=drain,
-                args=(process.stderr, stderr_path, stderr_lines),
+                args=(process.stderr, stderr_path, stderr_capture),
                 daemon=True,
             )
             stdout_thread.start()
@@ -723,8 +727,17 @@ class CodexCliBackend:
 
             timed_out = False
             stopped = False
+            resource_limited = False
             deadline = started + role.timeout_seconds
             while process.poll() is None:
+                if output_limit_event.is_set():
+                    resource_limited = True
+                    if windows:
+                        assert containment is not None
+                        containment.terminate_and_verify()
+                    else:
+                        self._terminate_process_group(process)
+                    break
                 if invocation.stop_path is not None and invocation.stop_path.exists():
                     stopped = True
                     if windows:
@@ -773,6 +786,8 @@ class CodexCliBackend:
                     posix_control,
                     int(supervisor_returncode),
                 )
+            if resource_limited:
+                returncode = RESOURCE_LIMIT_RETURN_CODE
             stdout_thread.join(timeout=5)
             stderr_thread.join(timeout=5)
             duration = time.monotonic() - started
@@ -788,6 +803,7 @@ class CodexCliBackend:
                     "returncode": int(returncode),
                     "timed_out": timed_out,
                     "stopped": stopped,
+                    "resource_limited": resource_limited,
                     "duration_seconds": round(duration, 6),
                     "time": time.time(),
                 },
@@ -795,7 +811,7 @@ class CodexCliBackend:
 
             thread_id: str | None = None
             usage: dict[str, int] = {}
-            for line in stdout_lines:
+            for line in stdout_capture.text().splitlines():
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
@@ -829,6 +845,7 @@ class CodexCliBackend:
                 duration_seconds=duration,
                 timed_out=timed_out,
                 stopped=stopped,
+                resource_limited=resource_limited,
             )
         finally:
             try:

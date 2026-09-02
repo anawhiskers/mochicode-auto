@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2, 2026-09-02
+
+- Replaced ambient child-process environment inheritance with a strict operational allowlist and explicit toolchain opt-in.
+- Bounded model, verifier, and persistent log output, with owned-process-tree termination on overflow.
+- Closed Node, Bun, and Deno inline-verifier aliases and protected-path padding bypasses.
+- Added directory-package resource limits equivalent to ZIP extraction limits.
+- Filtered Git metadata, caches, bytecode, backup trees, and more credential formats from install and package paths.
+- Moved adapter backups outside repositories and redacted machine paths from audit output.
+- Corrected portable package identity and the source-test packaging documentation.
+- Expanded CI to the full suite on Python 3.11 and 3.13.
+- Added GitHub artifact attestations for release ZIP provenance.
+
 ## 0.1.1, 2026-09-02
 
 - Required a concrete expected critical-path saving before Luna fan-out.

@@ -8,38 +8,45 @@ permissions:
   contents: read
 
 jobs:
-  focused-tests:
+  python-tests:
+    name: Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run full unit suite
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
+
+  package-and-powershell:
+    name: Package and PowerShell
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Run focused unit tests
+      - name: Run package security suite
+        shell: pwsh
+        run: python -m unittest tests.test_package -v
+      - name: Parse every PowerShell file
         shell: pwsh
         run: |
-          python -m unittest tests.test_routing tests.test_adaptive_config tests.test_agent_adapter tests.test_capabilities
-          python -m unittest tests.test_package.PackageTests.test_portable_python_launchers_select_one_executable
-      - name: Parse PowerShell entry points
-        shell: pwsh
-        run: |
-          $files = @(
-            'install.ps1',
-            'restore.ps1',
-            'package.ps1',
-            'verify-package.ps1',
-            'portable/install/agent-sync.ps1',
-            'portable/install/doctor.ps1'
-          )
-          foreach ($file in $files) {
+          Get-ChildItem -LiteralPath . -Recurse -File -Filter '*.ps1' | ForEach-Object {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
-              (Resolve-Path -LiteralPath $file),
+              $_.FullName,
               [ref]$tokens,
               [ref]$errors
             ) | Out-Null
             if ($errors.Count -gt 0) {
-              throw "$file failed PowerShell parsing: $($errors.Message -join '; ')"
+              throw "$($_.FullName) failed PowerShell parsing: $($errors.Message -join '; ')"
             }
           }

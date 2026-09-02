@@ -202,6 +202,38 @@ class AdaptiveInstallerTests(unittest.TestCase):
             source_roles = {path.name for path in (PLUGIN_ROOT / "config" / "agents").glob("*.toml")}
             self.assertEqual(installed_roles, source_roles)
 
+    def test_direct_source_install_excludes_unmeasured_git_cache_and_bytecode(self) -> None:
+        powershell = self._powershell()
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "source"
+            shutil.copytree(
+                PLUGIN_ROOT,
+                source,
+                ignore=shutil.ignore_patterns(".git", ".pytest_cache", "__pycache__", "*.pyc"),
+            )
+            (source / ".git" / "objects").mkdir(parents=True)
+            (source / ".git" / "objects" / "private").write_text("not copied", encoding="utf-8")
+            (source / ".pytest_cache").mkdir()
+            (source / ".pytest_cache" / "state").write_text("not copied", encoding="utf-8")
+            (source / "scripts" / "__pycache__").mkdir(exist_ok=True)
+            (source / "scripts" / "__pycache__" / "stale.pyc").write_bytes(b"not copied")
+            fake_home = root / "profile"
+
+            install = _run_install(
+                powershell,
+                source,
+                fake_home,
+                "-SkipPluginCommand",
+                "-SkipRoutingCleanup",
+                "-ConfirmInstall",
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            plugin = fake_home / "plugins" / "mochicode-auto"
+            self.assertFalse((plugin / ".git").exists())
+            self.assertFalse((plugin / ".pytest_cache").exists())
+            self.assertFalse((plugin / "scripts" / "__pycache__").exists())
+
     def test_canary_cleanup_disables_only_named_mcp_servers_removes_only_stale_agents_and_restores(self) -> None:
         powershell = self._powershell()
         with tempfile.TemporaryDirectory() as raw:

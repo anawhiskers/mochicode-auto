@@ -258,6 +258,75 @@ class PackageTests(unittest.TestCase):
             self.assertFalse(rejected_destination.exists())
             self.assertFalse(rejected_archive.exists())
 
+    def test_filters_backup_trees_and_refuses_additional_token_formats(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = _fixture(root / "source")
+            _write(source / ".agent-workflow-backups" / "old.md", "private backup\n")
+            _write(source / "notes.md.bak", "private backup\n")
+            destination = root / "bundle"
+            archive = root / "bundle.zip"
+            built = _run_ps(
+                PACKAGE_SCRIPT,
+                "-Source",
+                str(source),
+                "-Destination",
+                str(destination),
+                "-ZipPath",
+                str(archive),
+            )
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            manifest = json.loads((destination / "MANIFEST.json").read_text(encoding="utf-8"))
+            paths = {str(entry["path"]) for entry in manifest["files"]}
+            self.assertFalse(any(".agent-workflow-backups" in path for path in paths))
+            self.assertNotIn("plugin/notes.md.bak", paths)
+
+            _write(source / "release-proof.txt", "github_pat_" + "A" * 40 + "\n")
+            rejected = _run_ps(
+                PACKAGE_SCRIPT,
+                "-Source",
+                str(source),
+                "-Destination",
+                str(root / "rejected"),
+                "-ZipPath",
+                str(root / "rejected.zip"),
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("credential", rejected.stdout.lower() + rejected.stderr.lower())
+
+    def test_directory_manifest_resource_claims_are_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = _fixture(root / "source")
+            destination = root / "bundle"
+            archive = root / "bundle.zip"
+            built = _run_ps(
+                PACKAGE_SCRIPT,
+                "-Source",
+                str(source),
+                "-Destination",
+                str(destination),
+                "-ZipPath",
+                str(archive),
+            )
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            manifest_path = destination / "MANIFEST.json"
+            original = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+            manifest = dict(original)
+            manifest["file_count"] = ZIP_MAX_ENTRIES + 1
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            count_result = _run_ps(VERIFY_SCRIPT, "-PackageRoot", str(destination), "-Quiet")
+            self.assertNotEqual(count_result.returncode, 0)
+            self.assertIn("file_count exceeds limit", count_result.stdout.lower() + count_result.stderr.lower())
+
+            manifest = dict(original)
+            manifest["total_bytes"] = ZIP_MAX_TOTAL_BYTES + 1
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            size_result = _run_ps(VERIFY_SCRIPT, "-PackageRoot", str(destination), "-Quiet")
+            self.assertNotEqual(size_result.returncode, 0)
+            self.assertIn("total_bytes exceeds limit", size_result.stdout.lower() + size_result.stderr.lower())
+
     def test_binary_secret_payload_is_rejected_as_non_utf8(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
@@ -345,7 +414,7 @@ class PackageTests(unittest.TestCase):
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         self.assertEqual(
             schema["properties"]["package_name"]["const"],
-            "ana-codex-portable-ultimate",
+            "mochicode-auto-portable",
         )
         for name in ("package-safety.ps1", "install.ps1", "update.ps1", "doctor.ps1", "restore.ps1", "easy-install.ps1", "agent-sync.ps1"):
             self.assertTrue((REPO_ROOT / "portable" / "install" / name).is_file(), name)

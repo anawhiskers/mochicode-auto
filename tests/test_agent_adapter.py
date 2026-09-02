@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,12 +14,13 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = PLUGIN_ROOT / "scripts" / "agent_adapter.py"
 
 
-def run_adapter(*arguments: str) -> subprocess.CompletedProcess[str]:
+def run_adapter(*arguments: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-B", str(SCRIPT), *arguments],
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=env,
         check=False,
     )
 
@@ -45,6 +47,9 @@ class AgentAdapterTests(unittest.TestCase):
         report = json.loads(result.stdout)
         self.assertEqual(report["selected_settings"], {"effortLevel": "high", "model": "known"})
         self.assertNotIn("SECRET", result.stdout)
+        self.assertNotIn(str(home), result.stdout)
+        self.assertEqual(report["workflow_template"], "<plugin-root>/portable/templates/agent-adapters/CORE-WORKFLOW.md")
+        self.assertEqual(report["target"], "<user-home>/.claude/CLAUDE.md")
 
     def test_apply_requires_confirmation_and_preserves_existing_guidance_in_backup(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -54,14 +59,23 @@ class AgentAdapterTests(unittest.TestCase):
             target.write_text("Existing guidance.\n", encoding="utf-8")
             blocked = run_adapter("apply", "--agent", "claude", "--home", str(home))
             self.assertNotEqual(blocked.returncode, 0)
-            applied = run_adapter("apply", "--agent", "claude", "--home", str(home), "--confirm")
+            local_data = home / "local-data"
+            environment = os.environ.copy()
+            environment["LOCALAPPDATA"] = str(local_data)
+            applied = run_adapter(
+                "apply", "--agent", "claude", "--home", str(home), "--confirm", env=environment
+            )
             self.assertEqual(applied.returncode, 0, applied.stderr)
             payload = json.loads(applied.stdout)
             self.assertEqual(Path(payload["backup"]).read_text(encoding="utf-8"), "Existing guidance.\n")
+            self.assertTrue(Path(payload["backup"]).is_relative_to(local_data))
+            self.assertFalse(Path(payload["backup"]).is_relative_to(target.parent))
             merged = target.read_text(encoding="utf-8")
             self.assertIn("Existing guidance.", merged)
             self.assertIn("ANA-ADAPTIVE-WORKFLOW:BEGIN", merged)
-            repeated = run_adapter("apply", "--agent", "claude", "--home", str(home), "--confirm")
+            repeated = run_adapter(
+                "apply", "--agent", "claude", "--home", str(home), "--confirm", env=environment
+            )
             self.assertEqual(repeated.returncode, 0, repeated.stderr)
             self.assertEqual(target.read_text(encoding="utf-8").count("ANA-ADAPTIVE-WORKFLOW:BEGIN"), 1)
 

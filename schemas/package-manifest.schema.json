@@ -21,7 +21,7 @@
     },
     "package_name": {
       "type": "string",
-      "const": "ana-codex-portable-ultimate"
+      "const": "mochicode-auto-portable"
     },
     "version": {
       "type": "string",

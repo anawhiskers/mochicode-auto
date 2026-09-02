@@ -2620,6 +2620,20 @@ class MochiController:
         test_runner_names = {"pytest", "py.test", "unittest", "nose", "tox"}
         pytest_runner_names = {"pytest", "py.test"}
         external_python_modules = {"pytest", "py.test", "unittest", "nose", "tox"}
+        package_runner_modes = {
+            "npm": {"run", "test"},
+            "pnpm": {"run", "test"},
+            "yarn": {"run", "test"},
+            "cargo": {"test"},
+            "go": {"test"},
+            "dotnet": {"test"},
+            "ctest": set(),
+            "mvn": {"test", "verify"},
+            "mvnw": {"test", "verify"},
+            "gradle": {"check", "test"},
+            "gradlew": {"check", "test"},
+            "make": {"check", "test"},
+        }
         pytest_root_configs = (
             "pytest.ini",
             ".pytest.ini",
@@ -2687,6 +2701,33 @@ class MochiController:
                 value.lower().startswith("-c") for value in before_module
             ) or module_name.lower().startswith("-c")
 
+        def non_python_inline_code_requested(
+            executable: str,
+            args: tuple[str, ...],
+        ) -> bool:
+            lowered = tuple(value.lower() for value in args)
+            for value in lowered:
+                if value in {"-e", "--eval", "-p", "--print", "-c", "-command", "/c"}:
+                    return True
+                if (
+                    value.startswith("--eval=")
+                    or value.startswith("--print=")
+                    or (value.startswith("-e") and len(value) > 2)
+                    or (value.startswith("-p") and len(value) > 2)
+                ):
+                    return True
+            first_word = next((value for value in lowered if value and not value.startswith("-")), "")
+            return executable == "deno" and first_word == "eval"
+
+        def generic_nonexecution_flag(args: tuple[str, ...]) -> str:
+            for value in args:
+                lowered = value.lower()
+                if lowered in {"--help", "--version", "help", "version"}:
+                    return value
+                if lowered.startswith("--help=") or lowered.startswith("--version="):
+                    return value
+            return ""
+
         def pytest_option_values(
             args: tuple[str, ...],
             option: str,
@@ -2738,6 +2779,74 @@ class MochiController:
                     if resolved.is_relative_to(root):
                         roots.add(resolved)
             return tuple(sorted(roots))
+
+        def add_package_runner_inputs(executable: str, args: tuple[str, ...]) -> str:
+            allowed_modes = package_runner_modes[executable]
+            first_word = next((value.lower() for value in args if value and not value.startswith("-")), "")
+            if allowed_modes and first_word not in allowed_modes:
+                return f"unsupported verifier mode for {executable}: {first_word or '<missing>'}"
+            manifest_patterns = {
+                "npm": ("package.json", "package-lock.json", "npm-shrinkwrap.json"),
+                "pnpm": ("package.json", "pnpm-lock.yaml"),
+                "yarn": ("package.json", "yarn.lock"),
+                "cargo": ("Cargo.toml", "Cargo.lock"),
+                "go": ("go.mod", "go.sum"),
+                "dotnet": ("*.sln", "*.csproj", "*.fsproj"),
+                "ctest": ("CTestTestfile.cmake",),
+                "mvn": ("pom.xml",),
+                "mvnw": ("pom.xml",),
+                "gradle": ("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"),
+                "gradlew": ("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"),
+                "make": ("Makefile", "makefile"),
+            }
+            for pattern in manifest_patterns[executable]:
+                for candidate in root.glob(pattern):
+                    if candidate.is_file():
+                        add_path(candidate)
+            for check_root in repository_check_roots():
+                add_path(check_root)
+            if executable == "go":
+                for candidate in root.rglob("*_test.go"):
+                    if candidate.is_file():
+                        add_path(candidate)
+            return ""
+
+        def consumed_non_python_interpreter_inputs(
+            executable: str,
+            args: tuple[str, ...],
+        ) -> set[str]:
+            consumed: set[str] = set()
+            lowered = tuple(value.lower() for value in args)
+            test_mode = (
+                (executable == "node" and "--test" in lowered)
+                or (executable == "bun" and next((value for value in lowered if not value.startswith("-")), "") == "test")
+                or (executable == "deno" and next((value for value in lowered if not value.startswith("-")), "") == "test")
+            )
+            for raw in args:
+                path = repository_path(raw)
+                if path is None:
+                    continue
+                if test_mode and is_check_input(path):
+                    if path.is_file():
+                        consumed.add(path.relative_to(root).as_posix())
+                    else:
+                        consumed.update(
+                            child.resolve().relative_to(root).as_posix()
+                            for child in path.rglob("*")
+                            if child.is_file()
+                        )
+                    continue
+                if path.is_file():
+                    consumed.add(path.relative_to(root).as_posix())
+                    break
+            if test_mode and not consumed:
+                for check_root in repository_check_roots():
+                    consumed.update(
+                        child.resolve().relative_to(root).as_posix()
+                        for child in check_root.rglob("*")
+                        if child.is_file()
+                    )
+            return consumed
 
         def add_conftest_ancestors(path: Path) -> None:
             current = path if path.is_dir() else path.parent
@@ -2821,9 +2930,16 @@ class MochiController:
             if (
                 not python_executable
                 and executable_stem in interpreter_names
-                and any(value.lower() in inline_flags for value in command_args)
+                and non_python_inline_code_requested(executable_stem, command_args)
             ):
                 return f"inline interpreter verifier commands are forbidden: {argv[0]}"
+            diagnostic_flag = generic_nonexecution_flag(command_args)
+            if (
+                diagnostic_flag
+                and not python_executable
+                and executable_stem in interpreter_names
+            ):
+                return f"verifier command does not execute checks: {diagnostic_flag}"
             if python_executable and "-" in command_args:
                 return f"stdin Python verifier commands are forbidden: {argv[0]}"
             add_git_object_inputs(argv)
@@ -2934,6 +3050,27 @@ class MochiController:
                     candidate = root / directory
                     if candidate.is_dir():
                         add_path(candidate)
+
+            if executable_stem in package_runner_modes:
+                package_violation = add_package_runner_inputs(
+                    executable_stem,
+                    command_args,
+                )
+                if package_violation:
+                    return package_violation
+            elif executable_stem in interpreter_names and not python_executable:
+                consumed = consumed_non_python_interpreter_inputs(
+                    executable_stem,
+                    command_args,
+                )
+                command_files.intersection_update(consumed)
+            elif (
+                not python_executable
+                and
+                executable_stem not in test_runner_names | {"git"}
+                and not explicit_executable_path
+            ):
+                return f"unsupported verifier executable: {argv[0]}"
 
             if not command_files:
                 return (

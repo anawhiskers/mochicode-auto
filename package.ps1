@@ -221,7 +221,7 @@ function New-PackageManifest {
 
     return [ordered]@{
         schema_version = 1
-        package_name = 'ana-codex-portable-ultimate'
+        package_name = 'mochicode-auto-portable'
         version = $PackageVersion
         source_plugin_version = $SourceVersion
         generated_at_utc = $Timestamp
