@@ -58,7 +58,7 @@ The [September 2 benchmark record](docs/ROUTING-BENCHMARK-20260902.md) contains 
 - Windows 11 or a supported Windows release
 - Codex CLI and Codex desktop access
 - Saved ChatGPT subscription authentication
-- Python 3.11 or newer
+- Python 3.13 or newer. Python 3.11 and 3.12 cannot satisfy the required Codex Windows verifier sandbox gate.
 - Git
 - PowerShell 7 recommended
 
@@ -127,6 +127,14 @@ python .\scripts\mochicode.py doctor
 git diff --check
 ```
 
+Official release ZIPs are built from the tagged commit by GitHub Actions and receive a Sigstore-backed GitHub artifact attestation. Verify the publisher and exact artifact before installation:
+
+```powershell
+gh attestation verify .\MochiCode-Auto-<version>.zip -R anawhiskers/mochicode-auto
+```
+
+The attestation proves which repository, workflow, and commit produced the ZIP. It does not prove the code is vulnerability-free, so the package manifest and local verifier remain required.
+
 ## Updating the evidence
 
 Open a [workflow result](https://github.com/anawhiskers/mochicode-auto/issues/new?template=workflow-result.yml) when you test a new route. Include the original task, model and effort for every proven participant, acceptance result, total tokens, wall time, rework, integration defects, and human preference when applicable.
@@ -135,6 +143,6 @@ Routing changes should be promoted only after a paired comparison shows equal or
 
 ## Status
 
-Version `0.1.1` is an early public release. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
+Version `0.1.2` is an experimental beta. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
 
 Licensed under the [MIT License](LICENSE).

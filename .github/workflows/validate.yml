@@ -2,44 +2,97 @@ name: Validate
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  NO_COLOR: "1"
+  TERM: dumb
+
 jobs:
-  focused-tests:
+  python-tests:
+    name: Python 3.13 / ${{ matrix.group }}
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [core, execution, installer, controller]
+        include:
+          - group: core
+            modules: tests.test_adaptive_config tests.test_agent_adapter tests.test_capabilities tests.test_chatgpt_assets tests.test_cli_platform tests.test_cli_smoke tests.test_config_and_backend tests.test_contracts tests.test_gitops tests.test_learning tests.test_output_schemas tests.test_package tests.test_process_safety tests.test_role_catalog tests.test_routing tests.test_scheduler tests.test_skill_dispositions tests.test_state_and_evidence
+          - group: execution
+            modules: tests.test_backend_invocation tests.test_cli_commands tests.test_codex_provider tests.test_verification
+          - group: installer
+            modules: tests.test_installer tests.test_installer_adaptive
+          - group: controller
+            modules: tests.test_stub_demo tests.test_terra_contract_quality
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Run focused unit tests
+      - name: Install tested Codex CLI
+        shell: pwsh
+        run: npm install --global @openai/codex@0.144.0
+      - name: Run full unit suite
+        shell: pwsh
+        run: python -m unittest ${{ matrix.modules }} -v
+
+  python-floor:
+    name: Python 3.11 minimum refusal
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Verify unsupported runtime fails doctor
+        shell: pwsh
+        run: python -c "from scripts.mochicode_core.cli import doctor; check=next(item for item in doctor()['checks'] if item['name']=='python'); assert check['ok'] is False, check"
+
+  python-suites:
+    name: Python suites
+    if: ${{ always() }}
+    needs: [python-tests, python-floor]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every Python 3.13 shard and the Python 3.11 floor check
+        shell: bash
+        run: test '${{ needs.python-tests.result }}' = 'success' && test '${{ needs.python-floor.result }}' = 'success'
+
+  package-and-powershell:
+    name: Package and PowerShell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install tested Codex CLI
+        shell: pwsh
+        run: npm install --global @openai/codex@0.144.0
+      - name: Run package security suite
+        shell: pwsh
+        run: python -m unittest tests.test_package -v
+      - name: Parse every PowerShell file
         shell: pwsh
         run: |
-          python -m unittest tests.test_routing tests.test_adaptive_config tests.test_agent_adapter tests.test_capabilities
-          python -m unittest tests.test_package.PackageTests.test_portable_python_launchers_select_one_executable
-      - name: Parse PowerShell entry points
-        shell: pwsh
-        run: |
-          $files = @(
-            'install.ps1',
-            'restore.ps1',
-            'package.ps1',
-            'verify-package.ps1',
-            'portable/install/agent-sync.ps1',
-            'portable/install/doctor.ps1'
-          )
-          foreach ($file in $files) {
+          Get-ChildItem -LiteralPath . -Recurse -File -Filter '*.ps1' | ForEach-Object {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
-              (Resolve-Path -LiteralPath $file),
+              $_.FullName,
               [ref]$tokens,
               [ref]$errors
             ) | Out-Null
             if ($errors.Count -gt 0) {
-              throw "$file failed PowerShell parsing: $($errors.Message -join '; ')"
+              throw "$($_.FullName) failed PowerShell parsing: $($errors.Message -join '; ')"
             }
           }

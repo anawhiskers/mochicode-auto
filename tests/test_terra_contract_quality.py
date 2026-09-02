@@ -559,6 +559,107 @@ class TerraContractQualityTests(unittest.TestCase):
                         f"inline interpreter verifier commands are forbidden: {executable}",
                     )
 
+    def test_non_python_interpreter_aliases_reject_inline_code(self) -> None:
+        cases = (
+            ("node", "--eval=process.exit(0)"),
+            ("node", "-eprocess.exit(0)"),
+            ("node", "--print=1"),
+            ("node", "-p1"),
+            ("bun", "-econsole.log(1)"),
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            check = root / "checks" / "pinned.js"
+            check.parent.mkdir()
+            check.write_text("process.exit(1);\n", encoding="utf-8")
+            for executable, flag in cases:
+                with self.subTest(executable=executable, flag=flag):
+                    contract = self._verifier_contract(
+                        (executable, flag, "checks/pinned.js"),
+                        protected_patterns=("checks/pinned.js",),
+                    )
+                    self.assertEqual(
+                        MochiController._contract_workspace_violation(
+                            contract,
+                            root,
+                            {"checks/pinned.js"},
+                        ),
+                        f"inline interpreter verifier commands are forbidden: {executable}",
+                    )
+
+            deno = self._verifier_contract(
+                ("deno", "eval", "Deno.exit(0)", "checks/pinned.js"),
+                protected_patterns=("checks/pinned.js",),
+            )
+            self.assertEqual(
+                MochiController._contract_workspace_violation(
+                    deno,
+                    root,
+                    {"checks/pinned.js"},
+                ),
+                "inline interpreter verifier commands are forbidden: deno",
+            )
+
+    def test_nonexecution_mode_cannot_be_padded_with_protected_path(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            check = root / "checks" / "pinned.js"
+            check.parent.mkdir()
+            check.write_text("process.exit(1);\n", encoding="utf-8")
+            contract = self._verifier_contract(
+                ("node", "--version", "checks/pinned.js"),
+                protected_patterns=("checks/pinned.js",),
+            )
+
+            self.assertEqual(
+                MochiController._contract_workspace_violation(
+                    contract,
+                    root,
+                    {"checks/pinned.js"},
+                ),
+                "verifier command does not execute checks: --version",
+            )
+
+    def test_direct_node_script_is_valid_only_when_consumed_and_protected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            check = root / "checks" / "direct-check.js"
+            check.parent.mkdir()
+            check.write_text("process.exit(0);\n", encoding="utf-8")
+            contract = self._verifier_contract(
+                ("node", "checks/direct-check.js"),
+                protected_patterns=("checks/direct-check.js",),
+            )
+
+            self.assertEqual(
+                MochiController._contract_workspace_violation(
+                    contract,
+                    root,
+                    {"checks/direct-check.js"},
+                ),
+                "",
+            )
+
+    def test_unknown_external_verifier_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            check = root / "checks" / "pinned.txt"
+            check.parent.mkdir()
+            check.write_text("expected\n", encoding="utf-8")
+            contract = self._verifier_contract(
+                ("unknown-checker", "checks/pinned.txt"),
+                protected_patterns=("checks/pinned.txt",),
+            )
+
+            self.assertEqual(
+                MochiController._contract_workspace_violation(
+                    contract,
+                    root,
+                    {"checks/pinned.txt"},
+                ),
+                "unsupported verifier executable: unknown-checker",
+            )
+
     def test_free_threaded_debug_and_suffixed_python_family_is_fail_closed(self) -> None:
         executables = (
             "python3.13t.exe",

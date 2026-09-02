@@ -16,6 +16,11 @@ import time
 from typing import Any, TextIO
 
 from .backend import CodexCliBackend, _WINDOWS_CREATE_SUSPENDED, _WindowsJob
+from .process_safety import (
+    BoundedTextCapture,
+    RESOURCE_LIMIT_RETURN_CODE,
+    build_child_environment,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,17 +156,23 @@ def _supervisor_returncode(
 
 def _start_capture_threads(
     process: subprocess.Popen[str],
-) -> tuple[list[str], list[str], threading.Thread, threading.Thread]:
-    stdout_chunks: list[str] = []
-    stderr_chunks: list[str] = []
+) -> tuple[
+    BoundedTextCapture,
+    BoundedTextCapture,
+    threading.Thread,
+    threading.Thread,
+]:
+    limit_event = threading.Event()
+    stdout_capture = BoundedTextCapture(limit_event=limit_event)
+    stderr_capture = BoundedTextCapture(limit_event=limit_event)
 
-    def drain(stream: TextIO, sink: list[str]) -> None:
+    def drain(stream: TextIO, capture: BoundedTextCapture) -> None:
         try:
             while True:
                 chunk = stream.read(8192)
                 if not chunk:
                     return
-                sink.append(chunk)
+                capture.append(chunk)
         finally:
             stream.close()
 
@@ -169,22 +180,22 @@ def _start_capture_threads(
     assert process.stderr is not None
     stdout_thread = threading.Thread(
         target=drain,
-        args=(process.stdout, stdout_chunks),
+        args=(process.stdout, stdout_capture),
         daemon=True,
     )
     stderr_thread = threading.Thread(
         target=drain,
-        args=(process.stderr, stderr_chunks),
+        args=(process.stderr, stderr_capture),
         daemon=True,
     )
     stdout_thread.start()
     stderr_thread.start()
-    return stdout_chunks, stderr_chunks, stdout_thread, stderr_thread
+    return stdout_capture, stderr_capture, stdout_thread, stderr_thread
 
 
 def _finish_capture(
-    stdout_chunks: list[str],
-    stderr_chunks: list[str],
+    stdout_capture: BoundedTextCapture,
+    stderr_capture: BoundedTextCapture,
     stdout_thread: threading.Thread,
     stderr_thread: threading.Thread,
 ) -> tuple[str, str]:
@@ -192,7 +203,7 @@ def _finish_capture(
     stderr_thread.join(timeout=5)
     if stdout_thread.is_alive() or stderr_thread.is_alive():
         raise RuntimeError("verifier output pipes remained open after containment cleanup")
-    return "".join(stdout_chunks), "".join(stderr_chunks)
+    return stdout_capture.text(), stderr_capture.text()
 
 
 def _cleanup_verifier_artifacts(
@@ -327,6 +338,8 @@ def _run_windows_contained(
             job.terminate_and_verify()
             cleanup_attempted = True
         stdout, stderr = _finish_capture(*capture)
+        if not timed_out and (capture[0].truncated or capture[1].truncated):
+            returncode = RESOURCE_LIMIT_RETURN_CODE
         return returncode, stdout, stderr, timed_out
     finally:
         try:
@@ -403,6 +416,8 @@ def _run_linux_contained(
         )
         cleanup_verified = True
         stdout, stderr = _finish_capture(*capture)
+        if not timed_out and (capture[0].truncated or capture[1].truncated):
+            command_returncode = RESOURCE_LIMIT_RETURN_CODE
         return (
             124 if timed_out else command_returncode,
             stdout,
@@ -492,6 +507,8 @@ def run_command(
         if candidate_temp_root.parent != sandbox_home:
             raise RuntimeError("verifier temp root was not created under sandbox home")
         temp_root = candidate_temp_root
+        (sandbox_home / "appdata").mkdir(exist_ok=True)
+        (sandbox_home / "localappdata").mkdir(exist_ok=True)
 
         config = (
             '[permissions.mochicode-verifier]\n'
@@ -556,35 +573,20 @@ def run_command(
             common = raw_common.resolve() if raw_common.is_absolute() else (cwd / raw_common).resolve()
             readable_roots.append(common)
 
-        sensitive_markers = (
-            "API_KEY",
-            "AUTH",
-            "COOKIE",
-            "CREDENTIAL",
-            "PASSWORD",
-            "SECRET",
-            "TOKEN",
+        environment = build_child_environment(
+            os.environ,
+            overrides={
+                "CODEX_HOME": str(sandbox_home),
+                "HOME": str(sandbox_home),
+                "USERPROFILE": str(sandbox_home),
+                "APPDATA": str(sandbox_home / "appdata"),
+                "LOCALAPPDATA": str(sandbox_home / "localappdata"),
+                "TMP": str(temp_root),
+                "TEMP": str(temp_root),
+                "TMPDIR": str(temp_root),
+                "PYTHONDONTWRITEBYTECODE": "1",
+            },
         )
-        sensitive_prefixes = (
-            "ANTHROPIC_",
-            "AWS_",
-            "AZURE_",
-            "GITHUB_",
-            "GOOGLE_",
-            "OPENAI_",
-            "SLACK_",
-        )
-        environment = {
-            key: value
-            for key, value in os.environ.items()
-            if not any(marker in key.upper() for marker in sensitive_markers)
-            and not key.upper().startswith(sensitive_prefixes)
-        }
-        environment["CODEX_HOME"] = str(sandbox_home)
-        environment["TMP"] = str(temp_root)
-        environment["TEMP"] = str(temp_root)
-        environment["TMPDIR"] = str(temp_root)
-        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         command = [codex, "sandbox", "-p", profile_name]
         if windows:
             command.extend(["-c", 'windows.sandbox="elevated"'])

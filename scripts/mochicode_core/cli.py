@@ -236,7 +236,7 @@ def doctor() -> dict[str, Any]:
     )
     add(
         "python",
-        sys.version_info >= (3, 11),
+        sys.version_info >= (3, 13),
         f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
     )
     git_executable = shutil.which("git")

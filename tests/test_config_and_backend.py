@@ -66,6 +66,7 @@ class ConfigAndBackendTests(unittest.TestCase):
         self.assertIn("--disable", command)
         self.assertIn("multi_agent", command)
         self.assertIn("--ignore-user-config", command)
+        self.assertIn('shell_environment_policy.inherit="none"', command)
         self.assertNotIn("--ignore-rules", command)
         if os.name == "nt":
             self.assertIn('windows.sandbox="elevated"', command)

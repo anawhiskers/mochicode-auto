@@ -5,6 +5,7 @@ from dataclasses import replace
 import inspect
 import io
 import json
+from functools import partial
 import os
 import signal
 import subprocess
@@ -65,6 +66,21 @@ print(
     ),
     flush=True,
 )
+"""
+
+
+FLOODING_FAKE_CODEX = """
+from __future__ import annotations
+import json
+import sys
+import time
+from pathlib import Path
+
+args = sys.argv[1:]
+output_path = Path(args[args.index("--output-last-message") + 1])
+output_path.write_text(json.dumps({"status": "should-not-pass"}), encoding="utf-8")
+print("X" * 8192, flush=True)
+time.sleep(60)
 """
 
 
@@ -280,6 +296,40 @@ class FakeWindowsContainment:
 
 
 class BackendInvocationTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "requires native Windows Job containment")
+    def test_output_flood_is_bounded_and_terminates_the_owned_process_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            fake = root / "flooding_fake_codex.py"
+            fake.write_text(textwrap.dedent(FLOODING_FAKE_CODEX), encoding="utf-8")
+            schema = root / "schema.json"
+            schema.write_text('{"type":"object"}', encoding="utf-8")
+            invocation = CodexInvocation(
+                role="sol_plan",
+                cwd=root,
+                prompt="bounded output test",
+                output_schema=schema,
+                output_file=root / "result.json",
+                event_log=root / "events.jsonl",
+                process_log=root / "processes.jsonl",
+                stop_path=root / "STOP",
+            )
+            backend = CodexCliBackend(
+                (sys.executable, str(fake)),
+                load_config(PLUGIN_ROOT / "config" / "default.toml"),
+            )
+            bounded = partial(backend_module.BoundedTextCapture, 256)
+            with patch.object(backend_module, "BoundedTextCapture", bounded):
+                result = backend.invoke(invocation)
+
+            self.assertEqual(result.returncode, 125)
+            self.assertTrue(result.resource_limited)
+            self.assertFalse(result.timed_out)
+            self.assertLess(invocation.event_log.stat().st_size, 1024)
+            self.assertIn("output limit exceeded", invocation.event_log.read_text(encoding="utf-8"))
+            finished = json.loads(invocation.process_log.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertTrue(finished["resource_limited"])
+
     def test_prompt_uses_stdin_and_process_and_usage_are_recorded(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

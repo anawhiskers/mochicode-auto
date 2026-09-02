@@ -19,6 +19,7 @@ class CliPlatformTests(unittest.TestCase):
     def _non_windows_call(self, argv: list[str]):
         stdout = io.StringIO()
         stderr = io.StringIO()
+        parsed = cli.build_parser().parse_args(argv)
         guarded_names = (
             "doctor",
             "run_demo",
@@ -32,6 +33,8 @@ class CliPlatformTests(unittest.TestCase):
             "_read_command",
         )
         with ExitStack() as stack:
+            parser_factory = stack.enter_context(mock.patch.object(cli, "build_parser"))
+            parser_factory.return_value.parse_args.return_value = parsed
             stack.enter_context(mock.patch.object(cli.os, "name", "posix"))
             guarded = {
                 name: stack.enter_context(mock.patch.object(cli, name))
