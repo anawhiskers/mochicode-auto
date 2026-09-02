@@ -9,7 +9,7 @@
 - Filtered Git metadata, caches, bytecode, backup trees, and more credential formats from install and package paths.
 - Moved adapter backups outside repositories and redacted machine paths from audit output.
 - Corrected portable package identity and the source-test packaging documentation.
-- Expanded CI to the full suite on Python 3.11 and 3.13.
+- Expanded CI to the complete sharded suite on supported Python 3.13, plus a Python 3.11 floor check. Python 3.11 and 3.12 are refused because they fail the required Windows verifier sandbox gate.
 - Added GitHub artifact attestations for release ZIP provenance.
 
 ## 0.1.1, 2026-09-02

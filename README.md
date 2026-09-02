@@ -58,7 +58,7 @@ The [September 2 benchmark record](docs/ROUTING-BENCHMARK-20260902.md) contains 
 - Windows 11 or a supported Windows release
 - Codex CLI and Codex desktop access
 - Saved ChatGPT subscription authentication
-- Python 3.11 or newer
+- Python 3.13 or newer. Python 3.11 and 3.12 cannot satisfy the required Codex Windows verifier sandbox gate.
 - Git
 - PowerShell 7 recommended
 

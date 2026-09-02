@@ -18,12 +18,11 @@ env:
 
 jobs:
   python-tests:
-    name: Python ${{ matrix.python-version }} / ${{ matrix.group }}
+    name: Python 3.13 / ${{ matrix.group }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.13"]
         group: [core, execution, installer, controller]
         include:
           - group: core
@@ -38,7 +37,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
       - name: Install tested Codex CLI
         shell: pwsh
         run: npm install --global @openai/codex@0.144.0
@@ -46,15 +45,27 @@ jobs:
         shell: pwsh
         run: python -m unittest ${{ matrix.modules }} -v
 
+  python-floor:
+    name: Python 3.11 minimum refusal
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Verify unsupported runtime fails doctor
+        shell: pwsh
+        run: python -c "from scripts.mochicode_core.cli import doctor; check=next(item for item in doctor()['checks'] if item['name']=='python'); assert check['ok'] is False, check"
+
   python-suites:
     name: Python suites
     if: ${{ always() }}
-    needs: python-tests
+    needs: [python-tests, python-floor]
     runs-on: ubuntu-latest
     steps:
-      - name: Require every Python 3.11 and 3.13 shard
+      - name: Require every Python 3.13 shard and the Python 3.11 floor check
         shell: bash
-        run: test '${{ needs.python-tests.result }}' = 'success'
+        run: test '${{ needs.python-tests.result }}' = 'success' && test '${{ needs.python-floor.result }}' = 'success'
 
   package-and-powershell:
     name: Package and PowerShell
