@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "criteria", "remaining_risks", "merge_recommendation"],
+  "properties": {
+    "verdict": {"type": "string", "enum": ["MERGE", "DO_NOT_MERGE"]},
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterion", "status", "evidence"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "status": {"type": "string", "enum": ["PASS", "FAIL", "UNVERIFIED"]},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "remaining_risks": {"type": "array", "items": {"type": "string"}},
+    "merge_recommendation": {"type": "string"}
+  }
+}

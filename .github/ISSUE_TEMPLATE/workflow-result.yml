@@ -1,0 +1,50 @@
+name: Workflow result
+description: Submit a measured routing, model, or workflow comparison
+title: "[Result] "
+labels:
+  - benchmark
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report wins and losses. A useful negative result is better than an unsupported improvement claim.
+  - type: textarea
+    id: task
+    attributes:
+      label: Original task and acceptance criteria
+      description: Remove private information, credentials, and proprietary source before posting.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Codex version, operating system, repository type, and relevant constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: routes
+    attributes:
+      label: Compared routes
+      description: Include every proven model, effort, child, skill, and repair budget.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Results
+      description: Accepted quality, tests, tokens, wall time, retries, repairs, and integration defects.
+    validations:
+      required: true
+  - type: textarea
+    id: human
+    attributes:
+      label: Human evaluation
+      description: Required for visual, usability, comprehension, or enjoyment claims.
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations and raw evidence
+      description: State confounders and link redacted receipts or reproducible code.
+    validations:
+      required: true

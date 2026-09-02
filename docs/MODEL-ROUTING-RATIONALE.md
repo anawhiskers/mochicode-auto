@@ -1,0 +1,10 @@
+# Model Routing Rationale
+
+Reviewed 2026-08-28 against the live Codex model catalogue, current OpenAI model guidance, and the Artificial Analysis Intelligence Index cost-per-task methodology.
+
+- Sol High is the default substantive parent because paired local canaries found direct Sol faster, lower-token, and better by human visual judgment than the Terra-led stack. Sol owns product, architecture, visual/UI/UX, tightly coupled implementation, integration, debugging, live verification, and final judgment. Sol Max is reserved for consequential whole-product or architecture work.
+- Luna Medium is a bounded child for sizable independent implementation leaves, not a route label for work performed by the Sol parent. Direct Luna beat Luna Max when the task itself started on Luna, but a live global canary found that Sol-parent plus Luna-child used 574,391 combined tokens and 133 seconds versus direct Sol's 315,817 tokens and 67 seconds on the same two-file task, with no acceptance gain. Small sequential work therefore stays direct Sol. Luna Max remains an escalation after failed acceptance or proven difficulty.
+- Terra is not in the default native route. It remains optional only inside an explicitly selected experimental controller run.
+- Fast is opt-in. It changes speed and usage behavior, not the acceptance threshold.
+
+The public cost-per-task number is an API-weighted average across the benchmark's own task mix and token consumption. It is not a direct measure of Codex subscription usage, repository-specific success, or multi-agent integration quality. Current local evidence is recorded in `ADAPTIVE-ROUTING-BENCHMARK-20260901.md`; future role changes require paired canaries measuring acceptance, rework, total tokens, latency, cost, integration defects, and human-visible quality.

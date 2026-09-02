@@ -1,0 +1,130 @@
+# MochiCode Auto
+
+MochiCode Auto is an evidence-driven workflow router for Codex on Windows. You give Codex the real goal once. The workflow keeps strong tasks direct, delegates only work that can repay the handoff cost, and activates critics or durable state only when their trigger is present.
+
+The main lesson from the benchmark work is simple: **more agents are not automatically better**. Direct GPT-5.6 Sol High was often faster, cheaper, and better than elaborate orchestration. MochiCode therefore preserves direct Sol behavior by default and adds bounded workers only when the task divides cleanly.
+
+## Current routing
+
+```text
+trivial conversation or one obvious action
+  -> current parent, no workflow ceremony
+
+substantive, visual, architectural, coupled, or debugging work
+  -> direct GPT-5.6 Sol High
+
+sizable independent implementation leaf with executable checks
+  -> one real GPT-5.6 Luna Medium child
+  -> Luna Max only after failed acceptance or proven difficulty
+
+two or more frozen, disjoint leaves with measurable parallel value
+  -> Sol-led fan-out, starting with two workers
+  -> normally no more than three live workers per wave
+
+consequential quality gate
+  -> three fresh read-only judges
+  -> one Sol adjudication
+  -> at most one integrated repair pass
+```
+
+Terra and the deterministic controller remain experimental. They are not selected automatically.
+
+## What the measurements showed
+
+These are local paired experiments, not OpenAI or SWE-bench leaderboard scores.
+
+| Comparison | Direct route | Orchestrated route | Observed result |
+| --- | ---: | ---: | --- |
+| Tiny coding task | Sol High: 315,817 tokens, 67 sec | Sol + real Luna Medium: 574,391 tokens, 133 sec | Direct used 45% fewer tokens, took about half the time, and produced 7 tests versus 6 |
+| Visual task | Sol High: 1,203,669 tokens, 6.34 min | Terra + Sol + Luna: 2,461,020 tokens, 13.22 min | Direct was the human visual winner |
+| Game task | Sol High: 1,420,299 tokens, 9.28 min | Sol + eight Luna workers: 4,773,666 tokens, 11.14 min | Fan-out used 3.36 times the tokens, was 20% slower, and had worse integration defects |
+| Routine isolated code | Luna Medium: 162,289 tokens, 0.93 min | Luna Max: 168,963 tokens, 1.64 min | Medium passed 8/8 tests; Max passed 7/7 with no quality gain |
+| Final matched build | Stock Sol High: 2,672,996 tokens, 10.06 min | Automatic router: 2,722,738 tokens, 10.88 min | Router correctly stayed direct, but did not earn a quality promotion over stock |
+
+The complete table, negative results, test counts, human judgments, and limitations are in [the benchmark record](docs/ADAPTIVE-ROUTING-BENCHMARK-20260901.md).
+
+## Requirements
+
+- Windows 11 or a supported Windows release
+- Codex CLI and Codex desktop access
+- Saved ChatGPT subscription authentication
+- Python 3.11 or newer
+- Git
+- PowerShell 7 recommended
+
+MochiCode does not require an API key and does not add an MCP server. It does not fall back to paid API billing.
+
+## Install
+
+### From Git
+
+```powershell
+git clone https://github.com/anawhiskers/mochicode-auto.git
+cd mochicode-auto
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ConfirmInstall -DirectFirst
+```
+
+The installer creates a timestamped backup before changing an existing installation. Updating an existing copy is explicit:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -UpdateExisting -ConfirmInstall -DirectFirst
+```
+
+Run the doctor after installation:
+
+```powershell
+python .\scripts\mochicode.py doctor
+```
+
+Then start a fresh Codex task with **GPT-5.6 Sol at High** and enter your normal request. No routing phrase is needed.
+
+## Other coding agents
+
+The portable adapter can merge the model-neutral workflow into the documented Markdown instruction file for Codex, Claude, Kimi, Z.ai, or another coding agent. Audit first:
+
+```powershell
+pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent claude
+pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent kimi
+pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent zai
+pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent generic -Target C:\path\to\AGENT-INSTRUCTIONS.md
+```
+
+Apply only after reviewing the proposed target and backup location:
+
+```powershell
+pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent generic -Target C:\path\to\AGENT-INSTRUCTIONS.md -Apply -Confirm
+```
+
+The adapter does not copy credentials, login state, hooks, MCP endpoints, local plugin paths, or provider-specific model selections.
+
+## Safety and stopping rules
+
+- One writer owns each file or shared state at a time.
+- Children never spawn grandchildren.
+- Workers receive bounded paths, acceptance checks, and evidence requirements.
+- Repeated failures change method instead of looping forever.
+- Human judgment is final for visual quality, usability, comprehension, and enjoyment.
+- Internal tool or child failures trigger recovery, not a false whole-project blocker.
+- Production, deployment, spending, destructive work, and difficult-to-reverse actions remain human gates.
+- The experimental controller never automatically merges into the source branch.
+
+## Validate locally
+
+```powershell
+python -m unittest tests.test_routing tests.test_adaptive_config tests.test_agent_adapter tests.test_capabilities
+python -m unittest tests.test_package.PackageTests.test_portable_python_launchers_select_one_executable
+python .\scripts\mochicode.py doctor
+git diff --check
+```
+
+## Updating the evidence
+
+Open a [workflow result](https://github.com/anawhiskers/mochicode-auto/issues/new?template=workflow-result.yml) when you test a new route. Include the original task, model and effort for every proven participant, acceptance result, total tokens, wall time, rework, integration defects, and human preference when applicable.
+
+Routing changes should be promoted only after a paired comparison shows equal or better accepted quality. Cost and speed break ties after quality passes.
+
+## Status
+
+Version `0.1.0` is an early public release. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
+
+Licensed under the [MIT License](LICENSE).

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packet_id",
+    "goal",
+    "execution_mode",
+    "verification_class",
+    "acceptance_criteria",
+    "baseline_argv",
+    "final_argvs",
+    "expected_failure_codes",
+    "protected_patterns",
+    "allowed_paths",
+    "evidence_requirements"
+  ],
+  "properties": {
+    "packet_id": {"type": "string"},
+    "goal": {"type": "string"},
+    "execution_mode": {"type": "string", "enum": ["implement", "verify_only"]},
+    "verification_class": {"type": "string", "enum": ["hard", "soft"]},
+    "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+    "baseline_argv": {"type": "array", "items": {"type": "string"}},
+    "final_argvs": {
+      "type": "array",
+      "items": {"type": "array", "items": {"type": "string"}}
+    },
+    "expected_failure_codes": {"type": "array", "items": {"type": "integer"}},
+    "protected_patterns": {"type": "array", "items": {"type": "string"}},
+    "allowed_paths": {"type": "array", "items": {"type": "string"}},
+    "evidence_requirements": {"type": "array", "items": {"type": "string"}}
+  }
+}

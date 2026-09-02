@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "name": "mochicode-role-dispositions",
+  "sole_top_level_workflow": "mochicode-auto",
+  "core_agents": {
+    "mochicode-sol": {
+      "agent_name": "mochicode_sol",
+      "config_path": "config/agents/mochicode-sol.toml",
+      "model": "gpt-5.6-sol",
+      "sandbox": "read-only",
+      "phases": ["plan", "final_judge"],
+      "may_implement": false,
+      "may_spawn": false
+    },
+    "mochicode-terra-contract": {
+      "agent_name": "mochicode_terra_contract",
+      "config_path": "config/agents/mochicode-terra-contract.toml",
+      "model": "gpt-5.6-terra",
+      "sandbox": "workspace-write",
+      "phases": ["contract"],
+      "may_implement": false,
+      "may_spawn": false,
+      "write_scope": ["assigned additive focused check file only"]
+    },
+    "mochicode-terra-review": {
+      "agent_name": "mochicode_terra_review",
+      "config_path": "config/agents/mochicode-terra-review.toml",
+      "model": "gpt-5.6-terra",
+      "sandbox": "read-only",
+      "phases": ["fresh_review"],
+      "may_implement": false,
+      "may_spawn": false
+    },
+    "mochicode-luna": {
+      "agent_name": "mochicode_luna",
+      "config_path": "config/agents/mochicode-luna.toml",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "max",
+      "sandbox": "workspace-write",
+      "phases": ["implement"],
+      "may_implement": true,
+      "may_spawn": false,
+      "write_scope": ["declared packet allowed paths only"]
+    }
+  },
+  "archive_roles": {
+    "agent_harness": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-sol",
+      "native_role": null,
+      "distinct": false,
+      "route": "deterministic_controller",
+      "reason": "Workflow architecture and packet boundaries are Sol planning concerns; state, retries, and evidence remain controller responsibilities."
+    },
+    "batch_coordinator": {
+      "disposition": "consolidated",
+      "target_core_agent": null,
+      "native_role": null,
+      "distinct": false,
+      "route": "deterministic_controller",
+      "reason": "Homogeneous batch queues, depth, budgets, deduplication, and wave expansion are deterministic controller responsibilities."
+    },
+    "embedded_engineer": {
+      "disposition": "optional_overlay",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": true,
+      "route": "native_delegation",
+      "reason": "Board, firmware, serial, power, and recovery checks require a distinct hardware specialization.",
+      "fallback": "mochicode-luna"
+    },
+    "luna_batch": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Batch execution is a bounded Luna implementation packet; batch coordination is the only separate optional concern."
+    },
+    "luna_builder": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Ordinary bounded implementation is the core Luna role."
+    },
+    "luna_frontend": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Frontend work remains a bounded implementation packet and does not require a separate workflow role."
+    },
+    "luna_solver": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Sharply bounded difficult implementation uses the core Luna max setting."
+    },
+    "ml_mentor": {
+      "disposition": "optional_overlay",
+      "target_core_agent": null,
+      "native_role": null,
+      "distinct": true,
+      "route": "direct",
+      "reason": "Hands-on AI and ML teaching is a direct explanatory overlay, not a Terra review role or a production implementation role.",
+      "fallback": "direct_parent"
+    },
+    "quality_coordinator": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-terra-review",
+      "native_role": null,
+      "distinct": false,
+      "route": "deterministic_controller",
+      "reason": "Independent quality streams run under controller-owned evidence gates and use the existing Terra review role."
+    },
+    "repo_curator": {
+      "disposition": "optional_overlay",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": true,
+      "route": "deterministic_controller",
+      "reason": "The repository-workflow-upgrader is a narrow skill overlay. Terra defines its contract, the controller owns backup and integration, and a bounded Luna packet performs declared writes.",
+      "fallback": "mochicode-luna"
+    },
+    "researcher": {
+      "disposition": "optional_overlay",
+      "target_core_agent": null,
+      "native_role": null,
+      "distinct": true,
+      "route": "direct",
+      "reason": "Current authoritative external-source research is a direct evidence overlay, not Terra contract writing or implementation.",
+      "fallback": "direct_parent"
+    },
+    "simulation_engineer": {
+      "disposition": "optional_overlay",
+      "target_core_agent": "mochicode-luna",
+      "native_role": null,
+      "distinct": true,
+      "route": "native_delegation",
+      "reason": "Simulation-specific scene, tick, determinism, and playable-slice concerns are narrowly specialized.",
+      "fallback": "mochicode-luna"
+    },
+    "sol_architect": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-sol",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Architecture and planning are covered by Sol plan-only behavior."
+    },
+    "sol_critic": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-sol",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Adversarial final judgment is covered by Sol without a separate critic role."
+    },
+    "sol_judge": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-sol",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Fast decision judgment is covered by the core Sol role."
+    },
+    "sol_solver": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-sol",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "A separate Sol solver would duplicate flagship judgment and is not an implementation role."
+    },
+    "systems_forensics": {
+      "disposition": "optional_overlay",
+      "target_core_agent": null,
+      "native_role": null,
+      "distinct": true,
+      "route": "direct",
+      "reason": "Windows, Linux, networking, services, storage, identity, and log diagnosis use a direct operational overlay, not a Terra contract role.",
+      "fallback": "direct_parent"
+    },
+    "terra_context": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-terra-contract",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Repository mapping and requirements reconciliation support Terra contract work."
+    },
+    "terra_integrator": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-terra-contract",
+      "native_role": null,
+      "distinct": false,
+      "route": "deterministic_controller",
+      "reason": "Cross-file integration is controller-owned; Terra may define contracts and review but never implement production behavior."
+    },
+    "terra_verifier": {
+      "disposition": "consolidated",
+      "target_core_agent": "mochicode-terra-review",
+      "native_role": null,
+      "distinct": false,
+      "route": "native_delegation",
+      "reason": "Independent verification and evidence review are covered by the fresh Terra review role."
+    }
+  },
+  "routing": {
+    "automatic": true,
+    "user_input_required": "goal_only",
+    "direct": {
+      "when": [
+        "trivial lookup",
+        "tiny rewrite",
+        "one obvious reversible action",
+        "one-step navigation",
+        "ordinary conversation"
+      ],
+      "delegates": []
+    },
+    "direct_sol": {
+      "when": [
+        "substantive",
+        "visual_or_product",
+        "architecture",
+        "tightly_coupled",
+        "ambiguous",
+        "cross_cutting",
+        "debugging"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "owns_final_answer": true
+    },
+    "luna_medium_worker": {
+      "when": [
+        "sizable_independent_implementation_leaf",
+        "complete_specification",
+        "hard_executable_checks",
+        "no_open_authority_decision",
+        "delegation_overhead_expected_to_be_repaid"
+      ],
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "medium",
+      "escalation_effort": "max",
+      "requires_real_child_receipt": true,
+      "small_sequential_fallback": "direct_sol"
+    },
+    "sol_led_fanout": {
+      "when": [
+        "two_or_more_independent_leaves",
+        "frozen_interfaces",
+        "disjoint_write_ownership"
+      ],
+      "parent_model": "gpt-5.6-sol",
+      "parent_effort": "high",
+      "initial_workers": 2,
+      "normal_live_child_limit": 3,
+      "continue_only_after_measured_first_wave_gain": true
+    },
+    "deterministic_controller": {
+      "promotion_status": "experimental_unpromoted",
+      "automatic_selection": false,
+      "when_any": [
+        "complex",
+        "coupled",
+        "high_risk",
+        "resumable",
+        "multi_writer",
+        "dependency_aware_waves",
+        "hard_evidence_or_merge_gate",
+        "repeated_failure"
+      ],
+      "owner": "deterministic_controller",
+      "core_agents": [
+        "mochicode-sol",
+        "mochicode-terra-contract",
+        "mochicode-terra-review",
+        "mochicode-luna"
+      ]
+    },
+    "limits": {
+      "max_orchestration_depth": 1,
+      "one_writer_per_path": true,
+      "active_child_ceiling": 8,
+      "ceiling_is_hard": true,
+      "ceiling_applies_where_host_supported": true,
+      "default_wave_size": 3,
+      "max_wave_size": 8,
+      "waves": "unlimited"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "name": "ana-user-skill-dispositions",
+  "sole_automatic_top_level_workflow": "mochicode-auto",
+  "modes": {
+    "guardrail": [
+      "alignment-watchdog",
+      "test-driven-development"
+    ],
+    "automatic_leaf": [
+      "canvas-design",
+      "defuddle",
+      "hatch-pet",
+      "json-canvas",
+      "learn",
+      "mcp-builder",
+      "obsidian-bases",
+      "obsidian-markdown"
+    ],
+    "explicit_only": [
+      "chat-overflow-router",
+      "claude-state-bridge",
+      "design-planning",
+      "graphify",
+      "last30days",
+      "obsidian-cli",
+      "playwright",
+      "project-brief",
+      "recursive-improvement",
+      "route-personal-mcp",
+      "session-handoff",
+      "theme-factory",
+      "web-artifacts-builder"
+    ],
+    "replacement_backed_fallback": [
+      "docx",
+      "pdf",
+      "pptx",
+      "xlsx"
+    ],
+    "candidate_retirement_after_canary": [
+      "ana-collaboration-protocol",
+      "ask-clarify",
+      "coder",
+      "debugger",
+      "design-intake",
+      "goal-loop",
+      "master-status",
+      "model-routing",
+      "obsidian-second-brain",
+      "orchestrator",
+      "reviewer",
+      "token-economy"
+    ]
+  },
+  "invariants": {
+    "managed_skill_caches_are_read_only": true,
+    "retirement_requires_recoverable_archive": true,
+    "retirement_requires_exact_version_fresh_task_canary": true,
+    "replacement_backed_fallbacks_require_read_and_write_canaries_before_retirement": true,
+    "leaf_skills_do_not_select_a_competing_top_level_workflow": true,
+    "child_marked_prompts_do_not_recurse": true
+  }
+}

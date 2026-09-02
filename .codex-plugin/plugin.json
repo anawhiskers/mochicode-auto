@@ -1,0 +1,33 @@
+{
+  "name": "mochicode-auto",
+  "version": "0.1.0+codex.20260901184051",
+  "description": "Keep stock-quality Sol direct and add proven Luna workers, bounded fan-out, or selective evidence gates only when their overhead is justified.",
+  "author": {
+    "name": "Ana Stephens"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "orchestration",
+    "automation",
+    "quality",
+    "multi-agent"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Mochicode Auto",
+    "shortDescription": "Adaptive quality-first Codex routing",
+    "longDescription": "Preserves stock Sol High behavior for substantive and small sequential work, uses a real Luna Medium child only for sizable independent implementation leaves that can repay delegation overhead, permits small Sol-led fan-out only for frozen disjoint leaves, and activates durable state or fresh-context judges only when their measured trigger applies. Model claims require session evidence or child receipts, and the deterministic controller remains an explicit unpromoted experiment.",
+    "developerName": "Ana Stephens",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Complete this goal using the smallest quality-proven automatic route.",
+      "Keep stock Sol behavior unless a proven worker route clearly repays its overhead.",
+      "Use selective workers, state, and judges only when their trigger is present."
+    ]
+  }
+}

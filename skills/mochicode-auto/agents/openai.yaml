@@ -1,0 +1,7 @@
+interface:
+  display_name: "MochiCode Auto"
+  short_description: "Evidence-based Sol and Luna routing"
+  default_prompt: "Use $mochicode-auto to keep work direct unless a proven worker, fan-out, state, or review route clearly repays its overhead."
+
+policy:
+  allow_implicit_invocation: true
