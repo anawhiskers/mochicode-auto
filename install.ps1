@@ -119,9 +119,12 @@ function Test-SourceManifestExcluded {
     $parts = @($normalized.Split('/'))
     $leaf = [string]$parts[$parts.Count - 1]
     $excludedDirectories = @(
-        '.git', '.pytest_cache', '__pycache__', '.agent-workflow-backups',
-        'cache', 'caches', 'logs', 'log', 'sessions', 'session', 'tmp', 'temp',
-        'evidence', 'auth', 'authentication', 'credentials', 'secrets', 'private'
+        '.git', '.hg', '.svn', '__pycache__', '.pytest_cache', '.mypy_cache',
+        '.venv', 'venv', 'node_modules', 'cache', 'caches', 'benchmark', 'benchmarks',
+        'benchmark-data', 'benchmark_work', 'work', 'working', 'runtime', 'run', 'runs',
+        'state', 'learning', 'logs', 'log', 'evidence', 'sessions', 'session', 'auth',
+        'authentication', 'credentials', 'secrets', 'private', 'tmp', 'temp',
+        '.agent-workflow-backups'
     )
     if ($parts | Where-Object { $_ -in $excludedDirectories }) {
         return $true
