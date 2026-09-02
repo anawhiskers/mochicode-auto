@@ -37,6 +37,19 @@ class ProcessSafetyTests(unittest.TestCase):
 
         self.assertEqual(environment, {"PATH": "tools", "SDK_ROOT": "C:/toolchain"})
 
+    def test_operator_cannot_explicitly_allow_secret_like_variables(self) -> None:
+        environment = build_child_environment(
+            {
+                "PATH": "tools",
+                "MOCHICODE_CHILD_ENV_ALLOWLIST": "SDK_TOKEN,LC_SECRET,DATABASE_URL",
+                "SDK_TOKEN": "secret",
+                "LC_SECRET": "secret",
+                "DATABASE_URL": "secret",
+            }
+        )
+
+        self.assertEqual(environment, {"PATH": "tools"})
+
     def test_overrides_replace_isolated_runtime_paths(self) -> None:
         environment = build_child_environment(
             {"PATH": "tools", "HOME": "real-home", "DATABASE_URL": "secret"},

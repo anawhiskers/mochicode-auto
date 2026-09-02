@@ -27,7 +27,12 @@ _SAFE_ENVIRONMENT_NAMES = {
     "HOMEPATH",
     "LANG",
     "LC_ALL",
+    "LC_COLLATE",
     "LC_CTYPE",
+    "LC_MESSAGES",
+    "LC_MONETARY",
+    "LC_NUMERIC",
+    "LC_TIME",
     "LOCALAPPDATA",
     "LOGONSERVER",
     "NO_COLOR",
@@ -64,6 +69,10 @@ _SAFE_ENVIRONMENT_NAMES = {
 }
 _EXPLICIT_ALLOWLIST_VARIABLE = "MOCHICODE_CHILD_ENV_ALLOWLIST"
 _ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+_SENSITIVE_ENVIRONMENT_NAME = re.compile(
+    r"(?:^|_)(?:API_KEY|AUTH|BEARER|COOKIE|CREDENTIAL|DATABASE_URL|DSN|JWT|KUBECONFIG|PASS(?:WORD)?|PRIVATE_KEY|SECRET|SESSION|TOKEN)(?:_|$)",
+    re.IGNORECASE,
+)
 
 
 def build_child_environment(
@@ -78,13 +87,17 @@ def build_child_environment(
     requested = values.get(_EXPLICIT_ALLOWLIST_VARIABLE, "")
     for raw_name in requested.split(","):
         name = raw_name.strip()
-        if name and _ENVIRONMENT_NAME.fullmatch(name):
+        if (
+            name
+            and _ENVIRONMENT_NAME.fullmatch(name)
+            and _SENSITIVE_ENVIRONMENT_NAME.search(name) is None
+        ):
             allowed.add(name.upper())
 
     environment = {
         key: value
         for key, value in values.items()
-        if key.upper() in allowed or key.upper().startswith("LC_")
+        if key.upper() in allowed
     }
     environment.pop(_EXPLICIT_ALLOWLIST_VARIABLE, None)
     if overrides:
