@@ -17,7 +17,7 @@ sizable independent implementation leaf with executable checks
   -> one real GPT-5.6 Luna Medium child
   -> Luna Max only after failed acceptance or proven difficulty
 
-two or more frozen, disjoint leaves with measurable parallel value
+two or more frozen, disjoint leaves with a concrete expected critical-path saving
   -> Sol-led fan-out, starting with two workers
   -> normally no more than three live workers per wave
 
@@ -42,6 +42,16 @@ These are local paired experiments, not OpenAI or SWE-bench leaderboard scores.
 | Final matched build | Stock Sol High: 2,672,996 tokens, 10.06 min | Automatic router: 2,722,738 tokens, 10.88 min | Router correctly stayed direct, but did not earn a quality promotion over stock |
 
 The complete table, negative results, test counts, human judgments, and limitations are in [the benchmark record](docs/ADAPTIVE-ROUTING-BENCHMARK-20260901.md).
+
+### September 2 decision benchmark
+
+| Question | Lean route | Added mechanism | What happened |
+| --- | ---: | ---: | --- |
+| Two-worker crossover | Direct Sol: 335,605 tokens, 220 sec | Sol + 2 Luna: 1,714,210 tokens, 483 sec | Workers used 5.108× tokens, took 2.193× longer, and needed repair |
+| Mandatory debugging/TDD | Stock Sol: 236,099 tokens, 89 sec | Debug/TDD: 475,674 tokens, 108 sec | Both passed 20/20; ceremony used 2.015× tokens with no quality gain |
+| Consequential judge gate | No gate: 3,704,402 tokens, 327 sec | 3 judges + Sol: 8,231,527 tokens, 557 sec | Gate cost 2.222× tokens but uniquely caught two technical defects |
+
+The [September 2 benchmark record](docs/ROUTING-BENCHMARK-20260902.md) contains the frozen methodology, limitations, and promotion decisions.
 
 ## Requirements
 
@@ -125,6 +135,6 @@ Routing changes should be promoted only after a paired comparison shows equal or
 
 ## Status
 
-Version `0.1.0` is an early public release. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
+Version `0.1.1` is an early public release. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
 
 Licensed under the [MIT License](LICENSE).

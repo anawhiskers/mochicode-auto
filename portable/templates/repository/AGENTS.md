@@ -16,7 +16,7 @@ facts and rules that are not already covered there.
 - MochiCode Auto remains the only top-level workflow and selects the route automatically from the user's real goal.
 - Keep trivial work direct. Use direct Sol High for substantive visual, architectural, tightly coupled, or debugging work.
 - Direct Sol is a stock-quality passthrough. Preserve the user's original goal and repository instructions; add no ceremony, optional skill, worker, ledger, or critic without its concrete trigger.
-- Keep small or sequential work direct Sol. Use a real Luna Medium child only for sizable independent implementation leaves whose parallelism, isolation, or batch volume can repay delegation overhead; escalate to Luna Max after failed acceptance or proven difficulty.
+- Keep small or sequential work direct Sol. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, isolation, or batch volume; independence alone is insufficient. Escalate to Luna Max after failed acceptance or proven difficulty.
 - Fan out only frozen, disjoint leaves under a Sol parent. Start with two and use at most three live children per wave until larger waves earn promotion.
 - The deterministic controller is experimental and manual until its published promotion gates pass.
 
@@ -31,7 +31,7 @@ facts and rules that are not already covered there.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
 - Maximum orchestration depth is one, primary Sol parent to child. Children do not spawn descendants.
 - Eight active child threads is a host ceiling, not a target. Start with two and use no more than three live workers per wave until a larger wave is benchmark-promoted.
-- When a judge gate is warranted, use three fresh task-relevant read-only judges, one Sol adjudication, at most one integrated repair pass, then stop.
+- When a judge gate is warranted, use three fresh task-relevant read-only judges, one Sol adjudication, at most one integrated repair pass, then stop. For mixed UI-and-logic work, use product hierarchy, accessibility and interaction, and state integration as the default lenses; preserve visual preference for human comparison.
 - For consequential interactive behavior, test applicable running, paused, re-entrant, edit-during-run, keyboard-focus, narrow-layout, and actual reduced-motion states.
 - Use worktrees or non-overlapping paths for independent writers. Validate every changed instruction,
   TOML, JSON, and skill file with the repository's real checks.

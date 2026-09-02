@@ -13,8 +13,8 @@ Choose exactly one route automatically before doing project work:
 
 1. **Direct current parent**: Trivial lookups, tiny rewrites, one obvious reversible action, one-step navigation, and ordinary conversation stay direct with no child.
 2. **Direct Sol**: The quality-first default for substantive visual, product, architecture, tightly coupled, ambiguous, cross-cutting, or debugging work. Sol High owns judgment, implementation, live verification, correction, and final handoff. Use Sol Max only for consequential whole-product, architecture, security, release, or repeated quality-failure decisions.
-3. **Bounded Luna Medium worker**: Use a real Luna child only for a sizable independent implementation leaf whose context isolation, parallel wall-time saving, or batch volume is expected to repay parent handoff and review overhead. The Sol parent freezes the contract, spawns `gpt-5.6-luna` at Medium, does not edit the child's files, and verifies the receipt. Escalate the same valid contract to Luna Max only after failed acceptance or proven difficulty.
-4. **Bounded Sol-led fan-out**: At least two independent leaves with frozen interfaces and disjoint ownership. Start with two workers and use no more than three live children per wave. Continue only when the first wave demonstrates critical-path savings without integration regressions.
+3. **Bounded Luna Medium worker**: Use a real Luna child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow independent verification, external build latency, context isolation, or batch volume. Independence alone is not sufficient. The Sol parent freezes the contract, spawns `gpt-5.6-luna` at Medium, does not edit the child's files, and verifies the receipt. Escalate the same valid contract to Luna Max only after failed acceptance or proven difficulty.
+4. **Bounded Sol-led fan-out**: At least two independent leaves with frozen interfaces, disjoint ownership, and a concrete expected critical-path saving. Start with two workers and use no more than three live children per wave. Continue only when the first wave demonstrates savings without integration regressions.
 5. **Experimental controller**: Manual and unpromoted. Never enter it automatically until decision persistence, packet budgeting, real replanning, conditional compact final review, and usage aggregation pass their promotion gates.
 
 If a direct or bounded route becomes too large, preserve a checkpoint and escalate only to the smallest proven route that can handle the remaining work. A long task or failed child does not by itself justify the experimental controller.
@@ -63,7 +63,7 @@ The retained controller agent names are `mochicode_sol`, `mochicode_terra_contra
 
 ## Bounded critic panel
 
-Run a judge gate only for consequential human-facing work, architecture/security/release decisions, cross-subsystem integration, repeated failure, or an explicitly requested quality audit. When a judge gate is due, automatically use three fresh read-only judges with distinct task-relevant perspectives. They see the fixed bar and candidate, not the implementer's self-assessment. Judges never edit or spawn.
+Run a judge gate only for consequential human-facing work, architecture/security/release decisions, cross-subsystem integration, repeated failure, or an explicitly requested quality audit. When a judge gate is due, automatically use three fresh read-only judges with distinct task-relevant perspectives. For mixed UI-and-logic work, default those lenses to product hierarchy, accessibility and interaction, and state integration. They see the fixed bar and candidate, not the implementer's self-assessment. Judges never edit or spawn. Automated findings cannot decide taste; preserve a compact human comparison packet when visual preference remains open.
 
 The Sol parent adjudicates evidence, allows at most one integrated repair pass, reruns the same checks, and stops. Never loop until perfect. Correlated opinions without new failing evidence do not justify another round. Park a stubborn local packet and continue breadth-first work instead of polishing one subsystem while the larger product remains incomplete.
 
@@ -73,8 +73,8 @@ For interruption-prone or multi-context work, keep a compact verified state ledg
 
 Activate specialized skills only when their mechanism matches the task:
 
-- systematic debugging and verification-before-completion for security, concurrency, state-machine, data-integrity, boundary-sensitive failures, or after an incomplete first diagnosis;
-- focused TDD when behavior has a stable executable oracle;
+- systematic debugging and verification-before-completion for security, concurrency, or data-integrity consequence, after an incomplete diagnosis or failed first-pass acceptance, or when no executable reproduction exists;
+- focused TDD when a stable executable oracle exists and stock execution did not already isolate the failure and add the needed regression;
 - file-backed plans and dependency maps only when real dependencies or context pressure justify them;
 - no always-on brainstorming, mandatory planning ceremony, unbounded Gauntlet/Ralph loops, or automatic self-written lessons.
 
@@ -85,7 +85,7 @@ Preserve passing checks as regression obligations. Promote a reusable lesson onl
 - Preserve the existing packet schema. Plan packets retain `id`, `title`, `goal`, `wave`, `priority`, `vertical_slice`, `dependencies`, `acceptance_criteria`, and `verification_hints`. Contract packets retain `packet_id`, `goal`, `execution_mode`, `verification_class`, `acceptance_criteria`, `baseline_argv`, `final_argvs`, `expected_failure_codes`, `protected_patterns`, `allowed_paths`, and `evidence_requirements`.
 - Exactly one writer owns a file, module, configuration area, migration, or shared state at a time. Use disjoint paths or isolated worktrees for independent writers.
 - Maximum orchestration depth is one: primary Sol parent to child. Children never spawn descendants.
-- Eight active child threads is a host ceiling, never a target or promise. Use zero for direct work, start fan-out with two, and use no more than three live children per wave until a representative benchmark proves a larger wave improves accepted quality per token and wall time. Close completed children before successive waves.
+- Eight active child threads is a host ceiling, never a target or promise. Use zero for direct work. Start fan-out with two only after predicting a concrete critical-path saving, and use no more than three live children per wave until a representative benchmark proves a larger wave improves accepted quality per token and wall time. Close completed children before successive waves.
 - Give children only the objective, relevant paths and symbols, constraints, the bound Sol decision when applicable, acceptance criteria, allowed commands, required evidence, and output format. Results should normally stay under about 1,200 tokens and use `STATUS`, `FACTS`, `CHANGES`, `TESTS`, `RISKS`, and `NEXT`.
 - Native delegation does not bypass host policy, project instructions, protected inputs, or the one-writer rule.
 

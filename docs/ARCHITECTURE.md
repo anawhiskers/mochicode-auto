@@ -11,7 +11,7 @@ ordinary Codex prompt
         |
         +-- sizable independent implementation leaf -> proven Luna Medium child
         |
-        +-- frozen disjoint leaves -> Sol-led two-to-three-worker fan-out
+        +-- frozen disjoint leaves + predicted saving -> Sol-led two-to-three-worker fan-out
         |
         `-- explicit experimental controller only
                 |

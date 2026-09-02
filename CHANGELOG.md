@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1, 2026-09-02
+
+- Required a concrete expected critical-path saving before Luna fan-out.
+- Removed boundary sensitivity alone as a trigger for mandatory debugging and TDD ceremony.
+- Standardized consequential mixed UI-and-logic judges around product hierarchy, accessibility and interaction, and state integration.
+- Added a human comparison packet requirement for unresolved visual preference.
+- Published three new paired comparisons, including negative results and full usage accounting.
+
 ## 0.1.0, 2026-09-02
 
 - Promoted direct GPT-5.6 Sol High as the substantive default.

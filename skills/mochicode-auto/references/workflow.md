@@ -5,7 +5,7 @@
 1. Preserve the user's real goal and define observable completion automatically.
 2. Handle trivial work directly without a child.
 3. Use direct Sol High for substantive visual, product, architectural, tightly coupled, ambiguous, or debugging work.
-4. Use a real Luna Medium child only for a sizable independent implementation leaf whose parallelism, context isolation, or batch volume can repay handoff and review overhead. Keep tiny or sequential work direct Sol.
+4. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, context isolation, or batch volume. Independence alone is insufficient. Keep tiny or sequential work direct Sol.
 5. Fan out only frozen, disjoint leaves under a Sol parent, starting with two and capping normal waves at three.
 6. Keep the deterministic controller manual and experimental until its published promotion gates pass.
 
@@ -16,7 +16,7 @@
 3. A proven Luna Medium child implements sizable independent packets with hard checks. Luna Max is escalation-only. Parent-executed work must never be reported as Luna.
 4. Fan-out remains Sol-led. Freeze interfaces first, assign disjoint paths, and continue in waves only when the first wave earns its overhead.
 5. Terra is absent from the default native route and remains optional only inside an explicitly selected controller experiment.
-6. When a judge gate is warranted, three fresh orthogonal read-only judges run once. Sol adjudicates once, permits one integrated repair, reruns the same checks, and stops.
+6. When a judge gate is warranted, three fresh orthogonal read-only judges run once. For mixed UI-and-logic work, default to product hierarchy, accessibility and interaction, and state integration. Sol adjudicates once, permits one integrated repair, reruns the same checks, preserves a human comparison for taste, and stops.
 
 ## Task and child labels
 
@@ -45,7 +45,7 @@ Do not select this route automatically. Its current implementation remains unpro
 - Eight active child threads is a host ceiling. Start with two and use no more than three live workers per wave until larger waves are benchmark-promoted.
 - Child results normally stay below about 1,200 tokens and use `STATUS`, `FACTS`, `CHANGES`, `TESTS`, `RISKS`, and `NEXT`.
 
-Parallelize only disjoint write sets and independently verifiable questions. Never parallelize two workers that may edit the same files.
+Parallelize only disjoint write sets and independently verifiable questions after predicting a concrete critical-path saving. Never parallelize two workers that may edit the same files, and never treat independence by itself as sufficient reason to delegate.
 
 ## Progress and human-gate discipline
 

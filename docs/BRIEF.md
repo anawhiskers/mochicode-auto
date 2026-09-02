@@ -8,7 +8,7 @@ Make every substantive Codex project prompt automatically enter one quality-firs
 
 - The user supplies only the real goal. MochiCode automatically selects the route, model, effort, relevant skills, children, checkpoints, judges, and stop conditions.
 - Sol High is the default substantive parent and owns product, architecture, visual/UI/UX, tightly coupled implementation, integration, debugging, live verification, and final judgment. Sol Max is consequential-only.
-- Luna Medium owns only sizable independent implementation leaves when a real child receipt proves the route and expected parallelism, isolation, or batch volume can repay delegation overhead. Small sequential work remains direct Sol. Luna Max is escalation after failed acceptance or proven difficulty.
+- Luna Medium owns only sizable independent implementation leaves when a real child receipt proves the route and a concrete saving from leaf size, slow verification, external build latency, context isolation, or batch volume can repay delegation overhead. Independence alone is insufficient. Small sequential work remains direct Sol. Luna Max is escalation after failed acceptance or proven difficulty.
 - Terra is absent from the default route and optional only inside an explicitly selected experimental controller run.
 - Deterministic Python owns queues, dependencies, reservations, retries, budgets, fingerprints, pinned identities, persisted-state reconciliation, stop/resume, process containment, evidence, and merge eligibility only on that experimental route.
 - A warranted judge gate uses three task-relevant fresh read-only judges, one Sol adjudication, one repair at most, then stops.
