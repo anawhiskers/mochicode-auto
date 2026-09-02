@@ -218,6 +218,10 @@ class AdaptiveInstallerTests(unittest.TestCase):
             (source / ".pytest_cache" / "state").write_text("not copied", encoding="utf-8")
             (source / "scripts" / "__pycache__").mkdir(exist_ok=True)
             (source / "scripts" / "__pycache__" / "stale.pyc").write_bytes(b"not copied")
+            (source / ".agent-workflow-backups" / "old").mkdir(parents=True)
+            (source / ".agent-workflow-backups" / "old" / "private.md").write_text("not copied", encoding="utf-8")
+            (source / "local-output.jsonl").write_text("not copied", encoding="utf-8")
+            (source / "notes.md.bak").write_text("not copied", encoding="utf-8")
             fake_home = root / "profile"
 
             install = _run_install(
@@ -233,6 +237,9 @@ class AdaptiveInstallerTests(unittest.TestCase):
             self.assertFalse((plugin / ".git").exists())
             self.assertFalse((plugin / ".pytest_cache").exists())
             self.assertFalse((plugin / "scripts" / "__pycache__").exists())
+            self.assertFalse((plugin / ".agent-workflow-backups").exists())
+            self.assertFalse((plugin / "local-output.jsonl").exists())
+            self.assertFalse((plugin / "notes.md.bak").exists())
 
     def test_canary_cleanup_disables_only_named_mcp_servers_removes_only_stale_agents_and_restores(self) -> None:
         powershell = self._powershell()

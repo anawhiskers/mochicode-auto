@@ -113,18 +113,36 @@ function Assert-NoReparseEscape {
     }
 }
 
+function Test-SourceManifestExcluded {
+    param([string]$RelativePath)
+    $normalized = $RelativePath.Replace('\', '/').TrimStart('/')
+    $parts = @($normalized.Split('/'))
+    $leaf = [string]$parts[$parts.Count - 1]
+    $excludedDirectories = @(
+        '.git', '.pytest_cache', '__pycache__', '.agent-workflow-backups',
+        'cache', 'caches', 'logs', 'log', 'sessions', 'session', 'tmp', 'temp',
+        'evidence', 'auth', 'authentication', 'credentials', 'secrets', 'private'
+    )
+    if ($parts | Where-Object { $_ -in $excludedDirectories }) {
+        return $true
+    }
+    return (
+        $leaf -match '(?i)\.py[co]$' -or
+        $leaf -match '(?i)\.(?:log|trace|dmp|jsonl)$' -or
+        $leaf -match '(?i)(?:\.bak|\.old|\.orig|~)$' -or
+        $leaf -match '^(?i:\.env(?:\..*)?)$' -or
+        $leaf -match '(?i)(?:^|[-_.])(?:secret|credential|password|token|auth|oauth|cookie|session)(?:[-_.]|$)' -or
+        $leaf -match '(?i)(?:^|[-_.])(?:raw|unredacted)(?:[-_.]|$)'
+    )
+}
+
 function Get-SourceManifestHash {
     param([string]$Root)
     $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
-    $transientDirectories = @('.git', '.pytest_cache', '__pycache__')
     $entries = [System.Collections.Generic.List[string]]::new()
     foreach ($item in @(Get-ChildItem -LiteralPath $fullRoot -Recurse -Force)) {
         $relative = [System.IO.Path]::GetRelativePath($fullRoot, [System.IO.Path]::GetFullPath($item.FullName)).Replace('\', '/')
-        $parts = $relative.Split('/')
-        if ($parts | Where-Object { $_ -in $transientDirectories }) {
-            continue
-        }
-        if (-not $item.PSIsContainer -and [System.IO.Path]::GetExtension($relative) -eq '.pyc') {
+        if (Test-SourceManifestExcluded $relative) {
             continue
         }
         Assert-NoReparseEscape $fullRoot $item.FullName 'Source package item'
@@ -500,18 +518,13 @@ function Copy-SourceTreeFiltered {
     param([string]$Root, [string]$Destination)
     $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
     $fullDestination = [System.IO.Path]::GetFullPath($Destination).TrimEnd('\', '/')
-    $transientDirectories = @('.git', '.pytest_cache', '__pycache__')
     New-Item -ItemType Directory -Force -Path $fullDestination | Out-Null
     foreach ($item in @(Get-ChildItem -LiteralPath $fullRoot -Recurse -Force)) {
         $relative = [System.IO.Path]::GetRelativePath(
             $fullRoot,
             [System.IO.Path]::GetFullPath($item.FullName)
         )
-        $parts = $relative.Replace('\', '/').Split('/')
-        if ($parts | Where-Object { $_ -in $transientDirectories }) {
-            continue
-        }
-        if (-not $item.PSIsContainer -and [System.IO.Path]::GetExtension($relative) -eq '.pyc') {
+        if (Test-SourceManifestExcluded $relative) {
             continue
         }
         Assert-NoReparseEscape $fullRoot $item.FullName 'Source package item'

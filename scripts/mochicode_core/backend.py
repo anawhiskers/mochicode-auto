@@ -383,6 +383,7 @@ class CodexCliBackend:
         ]
         if not self.config.inherit_user_config:
             command.append("--ignore-user-config")
+        command.extend(["-c", 'shell_environment_policy.inherit="none"'])
         if os.name == "nt":
             command.extend(
                 ["-c", f'windows.sandbox="{self.config.windows_sandbox}"']
