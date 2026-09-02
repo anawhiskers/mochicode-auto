@@ -18,12 +18,22 @@ env:
 
 jobs:
   python-tests:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} / ${{ matrix.group }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.13"]
+        group: [core, execution, installer, controller]
+        include:
+          - group: core
+            modules: tests.test_adaptive_config tests.test_agent_adapter tests.test_capabilities tests.test_chatgpt_assets tests.test_cli_platform tests.test_cli_smoke tests.test_config_and_backend tests.test_contracts tests.test_gitops tests.test_learning tests.test_output_schemas tests.test_package tests.test_process_safety tests.test_role_catalog tests.test_routing tests.test_scheduler tests.test_skill_dispositions tests.test_state_and_evidence
+          - group: execution
+            modules: tests.test_backend_invocation tests.test_cli_commands tests.test_codex_provider tests.test_verification
+          - group: installer
+            modules: tests.test_installer tests.test_installer_adaptive
+          - group: controller
+            modules: tests.test_stub_demo tests.test_terra_contract_quality
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -34,7 +44,17 @@ jobs:
         run: npm install --global @openai/codex@0.144.0
       - name: Run full unit suite
         shell: pwsh
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest ${{ matrix.modules }} -v
+
+  python-suites:
+    name: Python suites
+    if: ${{ always() }}
+    needs: python-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every Python 3.11 and 3.13 shard
+        shell: bash
+        run: test '${{ needs.python-tests.result }}' = 'success'
 
   package-and-powershell:
     name: Package and PowerShell
