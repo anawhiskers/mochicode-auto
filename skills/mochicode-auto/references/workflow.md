@@ -16,7 +16,7 @@
 3. A proven Luna Medium child implements sizable independent packets with hard checks. Luna Max is escalation-only. Parent-executed work must never be reported as Luna.
 4. Fan-out remains Sol-led. Freeze interfaces first, assign disjoint paths, and continue in waves only when the first wave earns its overhead.
 5. Terra is absent from the default native route and remains optional only inside an explicitly selected controller experiment.
-6. When a judge gate is warranted, three fresh orthogonal read-only judges run once. For mixed UI-and-logic work, default to product hierarchy, accessibility and interaction, and state integration. Sol adjudicates once, permits one integrated repair, reruns the same checks, preserves a human comparison for taste, and stops.
+6. When a quality gate is warranted, one fresh evidence-bound read-only Sol High verifier runs once. Give it a compact acceptance manifest and let it request risk-specific evidence. Findings require executable reproduction or exact code or state evidence. Sol adjudicates once, permits one integrated repair, reruns the same checks, preserves human judgment for taste, and stops. Use three independent judges only for an explicit benchmark or a consequential multi-domain decision that one verifier cannot cover.
 
 ## Task and child labels
 
@@ -42,8 +42,9 @@ Do not select this route automatically. Its current implementation remains unpro
 - Preserve the packet and contract schemas already in `schemas/`. Do not add routing metadata to those payloads.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
 - Maximum orchestration depth is one, primary Sol parent to child. Children never spawn descendants.
-- Eight active child threads is a host ceiling. Start with two and use no more than three live workers per wave until larger waves are benchmark-promoted.
-- Child results normally stay below about 1,200 tokens and use `STATUS`, `FACTS`, `CHANGES`, `TESTS`, `RISKS`, and `NEXT`.
+- Eight active child threads is a host ceiling. Start with two and never exceed three live automatic workers per wave. Total waves remain bounded by the goal, budgets, and stop conditions.
+- Implementation children return `schemas/child-completion.schema.json`. Validate each receipt against the packet's declared writable paths and criterion IDs. Permit exactly one format-only correction for malformed output, then preserve the result as `PARTIAL` or `FAILED`; never infer completion from prose.
+- Receipts stay compact and record role, model, effort, owned paths, criterion evidence, command exit codes, evidence locations, risks, stop reason, and available per-child telemetry. Schema validity proves only handoff completeness and consistency; it does not replace parent verification or a triggered fresh verifier.
 
 Parallelize only disjoint write sets and independently verifiable questions after predicting a concrete critical-path saving. Never parallelize two workers that may edit the same files, and never treat independence by itself as sufficient reason to delegate.
 

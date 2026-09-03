@@ -11,7 +11,7 @@ Make every substantive Codex project prompt automatically enter one quality-firs
 - Luna Medium owns only sizable independent implementation leaves when a real child receipt proves the route and a concrete saving from leaf size, slow verification, external build latency, context isolation, or batch volume can repay delegation overhead. Independence alone is insufficient. Small sequential work remains direct Sol. Luna Max is escalation after failed acceptance or proven difficulty.
 - Terra is absent from the default route and optional only inside an explicitly selected experimental controller run.
 - Deterministic Python owns queues, dependencies, reservations, retries, budgets, fingerprints, pinned identities, persisted-state reconciliation, stop/resume, process containment, evidence, and merge eligibility only on that experimental route.
-- A warranted judge gate uses three task-relevant fresh read-only judges, one Sol adjudication, one repair at most, then stops.
+- A warranted quality gate uses one fresh evidence-bound read-only Sol High verifier, one Sol adjudication, one repair at most, then reruns all checks and stops. Three judges are reserved for an explicit benchmark or consequential multi-domain decision.
 - Wave one must create a runnable vertical slice.
 - One failed Luna attempt rotates the queue to independent work.
 - A second failed attempt, or the first repeated fingerprint, parks the packet.

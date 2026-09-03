@@ -20,7 +20,7 @@ MochiCode Auto is the only top-level workflow. The user supplies only the real g
 - Sol High is the default substantive parent and owns decisions, implementation when appropriate, integration, debugging, live verification, and final judgment. Max is consequential-only.
 - Small or sequential routine work remains direct Sol. Luna Medium is a real child only for sizable independent leaves with hard checks; Max is escalation after failed acceptance.
 - Terra is absent from default native routing and optional only in explicit controller experiments.
-- A warranted judge gate uses three task-relevant fresh read-only judges, one Sol adjudication, one repair at most, then stops.
+- A warranted quality gate uses one fresh evidence-bound read-only authority verifier, one parent adjudication, one repair at most, then reruns all checks and stops. Three judges are exceptional.
 - The deterministic controller owns persistent workflow state and every retry, evidence, and merge
   decision only on an explicitly selected experimental route.
 
@@ -32,8 +32,7 @@ active core agent definitions are in `config/agents/`.
 - Keep the existing plan and contract packet schemas unchanged.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
 - Maximum orchestration depth is one, primary Sol parent to child. Children do not spawn descendants.
-- Eight active child threads is a host ceiling. Automatic waves start with two and cap at three until larger waves earn benchmark promotion.
-- Total waves are unlimited at policy level, subject to the concrete run's safety, time, and host
-  limits.
+- Eight active child threads is a host ceiling. Automatic waves start with two and cap at three.
+- Total waves are bounded by the goal, declared budgets, stop conditions, and host limits.
 - Repository files do not widen host permissions, replace user approvals, change the host context
   limit, or add recursive agent configuration.

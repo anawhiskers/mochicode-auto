@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.3, 2026-09-02
+
+- Cut the automatic dispatcher by about half and kept ordinary substantive work on direct Sol High.
+- Replaced the routine three-judge gate with one risk-triggered, evidence-bound fresh verifier.
+- Limited automatic fan-out to two or three workers after a Sol-owned vertical slice freezes interfaces.
+- Added typed child completion receipts with strict path, criterion, command, truncation, and telemetry checks.
+- Added explicit candidate-lesson trials and receipt-bound promotion evidence; stub, fabricated, missing, and tampered evidence cannot promote lessons.
+- Added negative-control requirements for learned lessons and stopped candidate lessons from entering ordinary prompts.
+- Added repository verification profiles, bounded acceptance briefs, and consequential UI state matrices.
+- Recorded the external-agent research and the Hermes mechanism review without adding another runtime or MCP server.
+
 ## 0.1.2, 2026-09-02
 
 - Replaced ambient child-process environment inheritance with a strict operational allowlist and explicit toolchain opt-in.

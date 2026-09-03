@@ -56,16 +56,16 @@ class SkillDispositionTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("config/skill-dispositions.json", dispatcher)
-        self.assertIn("sole automatic top-level project workflow", dispatcher)
-        self.assertIn("Never invoke this workflow recursively", dispatcher)
-        self.assertIn("managed system or plugin-cache skills", dispatcher)
+        self.assertIn("only automatic top-level workflow", dispatcher)
+        self.assertIn("never invokes this workflow", dispatcher)
+        self.assertIn("No other skill may start a competing top-level loop", dispatcher)
 
     def test_dispatcher_requires_visible_model_and_effort_labels_for_new_work(self) -> None:
         dispatcher = (PLUGIN_ROOT / "skills" / "mochicode-auto" / "SKILL.md").read_text(
             encoding="utf-8"
         )
         self.assertIn("[ROLE | MODEL | EFFORT] concise objective", dispatcher)
-        self.assertIn("child packet and the parent handoff", dispatcher)
+        self.assertIn("Record each real child role, model, effort", dispatcher)
 
 
 if __name__ == "__main__":

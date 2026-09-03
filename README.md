@@ -6,6 +6,8 @@ The main lesson from the benchmark work is simple: **more agents are not automat
 
 ## Current routing
 
+The 2026-09-02 decision benchmark confirmed direct Sol as the base route and rejected automatic fan-out plus always-on debug/TDD ceremony. Follow-up research and the v0.1.2 security pilot replaced the ordinary three-judge gate with one evidence-bound fresh verifier; three judges remain exceptional. See [the benchmark record](docs/ROUTING-BENCHMARK-20260902.md) and [research record](docs/AGENT-WORKFLOW-RESEARCH-20260902.md).
+
 ```text
 trivial conversation or one obvious action
   -> current parent, no workflow ceremony
@@ -21,13 +23,14 @@ two or more frozen, disjoint leaves with a concrete expected critical-path savin
   -> Sol-led fan-out, starting with two workers
   -> normally no more than three live workers per wave
 
-consequential quality gate
-  -> three fresh read-only judges
-  -> one Sol adjudication
-  -> at most one integrated repair pass
+observable risk or quality gate -> one fresh evidence-bound Sol verifier -> one adjudication -> at most one repair
+
+experimental controller -> explicit selection only after promotion gates pass
 ```
 
-Terra and the deterministic controller remain experimental. They are not selected automatically.
+Native work has one writer per file or shared state. Delegation depth is one, primary Sol parent to child, and children cannot delegate. Automatic fan-out starts with two and never exceeds three live workers; eight is only a host ceiling.
+
+Delegated implementation leaves use a typed JSON completion receipt. The bundled validator rejects missing acceptance evidence, unowned or unsafe paths, contradictory command exits, truncation markers, and fake `COMPLETED` claims. One malformed receipt gets one format-only correction attempt. This makes handoffs inspectable, but it does not replace parent verification or a risk-triggered fresh verifier.
 
 ## What the measurements showed
 
@@ -141,8 +144,40 @@ Open a [workflow result](https://github.com/anawhiskers/mochicode-auto/issues/ne
 
 Routing changes should be promoted only after a paired comparison shows equal or better accepted quality. Cost and speed break ties after quality passes.
 
+## Project run
+
+Put the exact request in a temporary text file outside the target repository, then run:
+
+```powershell
+python scripts\mochicode.py run --project C:\path\to\repo --goal-file C:\path\to\goal.md --backend codex
+```
+
+Inspect or control it with:
+
+```powershell
+python scripts\mochicode.py status --run-root C:\path\to\run --verbose
+python scripts\mochicode.py stop --run-root C:\path\to\run
+python scripts\mochicode.py resume --run-root C:\path\to\run --continue-run --backend codex
+```
+
+## Learning
+
+The learning store records bounded outcome metadata and lessons in separate append-only hash chains. Raw goals and prompts are rejected. A verified failure and recovery pair creates a fixed-taxonomy candidate. Candidates never enter ordinary model prompts; only an explicit trial can expose one, and the real runner records both the expected applicability and whether the provider actually applied it. Eligible trial evidence is copied into the trusted local learning store and bound to the SHA-256 of the Codex model-call receipt. Promotion reopens that receipt and verifies its bytes, backend, role, lesson state, exit status, timeout, and stop state; zero-cost stub or fabricated evidence cannot promote a lesson. Promotion requires a recorded positive recurrence, a separate successful negative-control task where the lesson stayed inactive, and either explicit human approval or two independent positive runs. Tampered chains are never retrieved or exported, and exports contain only redacted active lessons with known evidence references. Active lessons cannot change tests, criteria, verifier commands, budgets, retries, or safety gates. This is durable, evidence-gated prompt memory, not model-weight training.
+
+```powershell
+python scripts\mochicode.py lessons list --json
+python scripts\mochicode.py run --project C:\path\to\repo --goal-file C:\path\to\trial.md --backend codex --lesson-trial LESSON_ID --lesson-expected true
+python scripts\mochicode.py run --project C:\path\to\repo --goal-file C:\path\to\negative-control.md --backend codex --lesson-trial LESSON_ID --lesson-expected false
+python scripts\mochicode.py lessons promote LESSON_ID --evidence POSITIVE_REF1 --evidence POSITIVE_REF2 --negative-control-evidence NEGATIVE_REF
+python scripts\mochicode.py lessons retire LESSON_ID --reason "superseded"
+```
+
+Detailed design and research decisions are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RESEARCH.md](docs/RESEARCH.md).
+
+Private Google Drive package sync uses the boundary described in [docs/CLOUD-SYNC.md](docs/CLOUD-SYNC.md).
+
 ## Status
 
-Version `0.1.2` is an experimental beta. The direct Sol and bounded native routes are usable. The deterministic controller is included for experimentation but remains unpromoted because its known defects are documented in the benchmark record.
+Version `0.1.3` is an experimental beta. Direct Sol, bounded native workers, typed child receipts, and selective verification are usable. The deterministic controller remains opt-in and unpromoted.
 
 Licensed under the [MIT License](LICENSE).
