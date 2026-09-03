@@ -240,18 +240,21 @@ class StubRoleProvider:
         }
 
     def lesson_trial_outcome(self, role: str) -> dict[str, Any] | None:
-        trial = self.lesson_trial
+        trial = getattr(self, "lesson_trial", None)
         if trial is None or trial.role not in {"*", role}:
             return None
         return {
             "lesson_id": trial.lesson_id,
             "lesson_expected": trial.expected,
-            "lesson_applied": role in self._trial_applied_roles,
+            "lesson_applied": role in getattr(self, "_trial_applied_roles", set()),
             "receipt_path": None,
         }
 
     def _mark_trial(self, role: str) -> None:
-        if self.lesson_trial is not None and self.lesson_trial.applies_to(role):
+        trial = getattr(self, "lesson_trial", None)
+        if trial is not None and trial.applies_to(role):
+            if not hasattr(self, "_trial_applied_roles"):
+                self._trial_applied_roles = set()
             self._trial_applied_roles.add(role)
 
 
