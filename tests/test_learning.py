@@ -36,6 +36,117 @@ class LearningStoreTests(unittest.TestCase):
         )
         return str(failure["record_hash"]), str(success["record_hash"])
 
+    @staticmethod
+    def _lesson_trial(
+        store: LearningStore,
+        lesson_id: str,
+        suffix: str,
+        *,
+        expected: bool,
+        applied: bool,
+    ) -> str:
+        receipt_path = store.root / f"incoming-{suffix}.json"
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.write_text(
+            json.dumps(
+                {
+                    "backend": "codex",
+                    "role": "luna_execute",
+                    "returncode": 0,
+                    "timed_out": False,
+                    "stopped": False,
+                    "lesson_trial": {
+                        "lesson_id": lesson_id,
+                        "lesson_expected": expected,
+                        "lesson_applied": applied,
+                    },
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        outcome = store.record_trial_outcome(
+            receipt_path=receipt_path,
+            run_id=f"run-{suffix}",
+            packet_id=f"packet-{suffix}",
+            role="luna_execute",
+            success=True,
+            failure_class=None,
+            fingerprint=f"trial-{suffix}",
+            goal_hash=f"goal-{suffix}",
+            lesson_id=lesson_id,
+            lesson_expected=expected,
+            lesson_applied=applied,
+        )
+        return str(outcome["record_hash"])
+
+    def test_fabricated_trial_provenance_cannot_enter_the_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            store = LearningStore(Path(raw))
+            with self.assertRaisesRegex(ValueError, "record_trial_outcome"):
+                store.record_outcome(
+                    run_id="run-fabricated",
+                    packet_id="packet-fabricated",
+                    role="luna_execute",
+                    success=True,
+                    failure_class=None,
+                    fingerprint="fabricated",
+                    goal_hash="fabricated-goal",
+                    lesson_id="les-123456789abc",
+                    lesson_expected=True,
+                    lesson_applied=True,
+                    lesson_backend="codex",
+                    model_receipt_hash="a" * 64,
+                )
+            self.assertFalse((store.root / "outcomes.jsonl").exists())
+
+    def test_promotion_rejects_a_tampered_trusted_model_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            store = LearningStore(Path(raw))
+            failure_ref, success_ref = self._outcome_pair(store, "receipt-tamper")
+            lesson = store.propose_recovery_lesson(
+                role="luna_execute",
+                scope="ignored",
+                failure_class="verifier_failed",
+                tags=("ignored",),
+                failure_evidence=failure_ref,
+                success_evidence=success_ref,
+            )
+            positive = self._lesson_trial(
+                store,
+                lesson.lesson_id,
+                "receipt-positive",
+                expected=True,
+                applied=True,
+            )
+            negative = self._lesson_trial(
+                store,
+                lesson.lesson_id,
+                "receipt-negative",
+                expected=False,
+                applied=False,
+            )
+            positive_record = next(
+                item
+                for item in store.outcomes.records()
+                if item.get("record_hash") == positive
+            )
+            receipt_path = (
+                store.root
+                / "trial-receipts"
+                / f"{positive_record['model_receipt_hash']}.json"
+            )
+            receipt_path.write_bytes(receipt_path.read_bytes() + b" ")
+
+            with self.assertRaisesRegex(ValueError, "tampered"):
+                store.promote(
+                    lesson.lesson_id,
+                    verification_refs=(positive,),
+                    negative_control_refs=(negative,),
+                    human_approved=True,
+                )
+
     @classmethod
     def _active_lesson(cls, store: LearningStore, suffix: str):
         failure_ref, success_ref = cls._outcome_pair(store, f"{suffix}-candidate")
@@ -47,11 +158,19 @@ class LearningStoreTests(unittest.TestCase):
             failure_evidence=failure_ref,
             success_evidence=success_ref,
         )
-        _, verification_one = cls._outcome_pair(store, f"{suffix}-verification-one")
-        _, verification_two = cls._outcome_pair(store, f"{suffix}-verification-two")
+        verification_one = cls._lesson_trial(
+            store, lesson.lesson_id, f"{suffix}-verification-one", expected=True, applied=True
+        )
+        verification_two = cls._lesson_trial(
+            store, lesson.lesson_id, f"{suffix}-verification-two", expected=True, applied=True
+        )
+        negative_control = cls._lesson_trial(
+            store, lesson.lesson_id, f"{suffix}-negative-control", expected=False, applied=False
+        )
         return store.promote(
             lesson.lesson_id,
             verification_refs=(verification_one, verification_two),
+            negative_control_refs=(negative_control,),
         )
 
     def test_failure_then_verified_recovery_creates_bounded_candidate(self) -> None:
@@ -108,21 +227,108 @@ class LearningStoreTests(unittest.TestCase):
                 failure_evidence=failure_ref,
                 success_evidence=success_ref,
             )
-            _, verification_one = self._outcome_pair(store, "verification-one")
-            _, verification_two = self._outcome_pair(store, "verification-two")
+            verification_one = self._lesson_trial(
+                store, lesson.lesson_id, "verification-one", expected=True, applied=True
+            )
+            verification_two = self._lesson_trial(
+                store, lesson.lesson_id, "verification-two", expected=True, applied=True
+            )
+            negative_control = self._lesson_trial(
+                store, lesson.lesson_id, "negative-control", expected=False, applied=False
+            )
 
             with self.assertRaisesRegex(ValueError, "two independent"):
-                store.promote(lesson.lesson_id, verification_refs=(verification_one,))
+                store.promote(
+                    lesson.lesson_id,
+                    verification_refs=(verification_one,),
+                    negative_control_refs=(negative_control,),
+                )
+
+            with self.assertRaisesRegex(ValueError, "negative-control"):
+                store.promote(
+                    lesson.lesson_id,
+                    verification_refs=(verification_one, verification_two),
+                )
 
             active = store.promote(
                 lesson.lesson_id,
                 verification_refs=(verification_one, verification_two),
+                negative_control_refs=(negative_control,),
             )
             self.assertEqual(active.status, "active")
             self.assertEqual(
                 store.retrieve("python", role="luna_execute")[0].lesson_id,
                 lesson.lesson_id,
             )
+
+    def test_promotion_rejects_positive_evidence_without_lesson_activation(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            store = LearningStore(Path(raw))
+            failure_ref, success_ref = self._outcome_pair(store, "positive-binding")
+            lesson = store.propose_recovery_lesson(
+                role="luna_execute",
+                scope="python",
+                failure_class="verifier_failed",
+                tags=("python",),
+                failure_evidence=failure_ref,
+                success_evidence=success_ref,
+            )
+            _, unrelated_one = self._outcome_pair(store, "unrelated-one")
+            _, unrelated_two = self._outcome_pair(store, "unrelated-two")
+            negative_control = self._lesson_trial(
+                store, lesson.lesson_id, "bound-negative", expected=False, applied=False
+            )
+
+            with self.assertRaisesRegex(ValueError, "expected lesson activation"):
+                store.promote(
+                    lesson.lesson_id,
+                    verification_refs=(unrelated_one, unrelated_two),
+                    negative_control_refs=(negative_control,),
+                )
+
+    def test_promotion_rejects_a_negative_control_where_lesson_activated(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            store = LearningStore(Path(raw))
+            failure_ref, success_ref = self._outcome_pair(store, "negative-binding")
+            lesson = store.propose_recovery_lesson(
+                role="luna_execute",
+                scope="python",
+                failure_class="verifier_failed",
+                tags=("python",),
+                failure_evidence=failure_ref,
+                success_evidence=success_ref,
+            )
+            positive_one = self._lesson_trial(
+                store, lesson.lesson_id, "bound-positive-one", expected=True, applied=True
+            )
+            positive_two = self._lesson_trial(
+                store, lesson.lesson_id, "bound-positive-two", expected=True, applied=True
+            )
+            bad_negative = self._lesson_trial(
+                store, lesson.lesson_id, "bad-negative", expected=False, applied=True
+            )
+
+            with self.assertRaisesRegex(ValueError, "inactive lesson state"):
+                store.promote(
+                    lesson.lesson_id,
+                    verification_refs=(positive_one, positive_two),
+                    negative_control_refs=(bad_negative,),
+                )
+
+    def test_lesson_trial_fields_are_all_or_none(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            store = LearningStore(Path(raw))
+            with self.assertRaisesRegex(ValueError, "record_trial_outcome"):
+                store.record_outcome(
+                    run_id="run-partial-trial",
+                    packet_id="packet-partial-trial",
+                    role="luna_execute",
+                    success=True,
+                    failure_class=None,
+                    fingerprint="partial-trial",
+                    goal_hash="partial-trial-goal",
+                    lesson_id="les-123456789abc",
+                )
 
     def test_retirement_preserves_history_but_stops_injection(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -136,10 +342,16 @@ class LearningStoreTests(unittest.TestCase):
                 failure_evidence=failure_ref,
                 success_evidence=success_ref,
             )
-            _, human_evidence = self._outcome_pair(store, "human-review")
+            human_evidence = self._lesson_trial(
+                store, lesson.lesson_id, "human-review", expected=True, applied=True
+            )
+            negative_control = self._lesson_trial(
+                store, lesson.lesson_id, "human-negative", expected=False, applied=False
+            )
             store.promote(
                 lesson.lesson_id,
                 verification_refs=(human_evidence,),
+                negative_control_refs=(negative_control,),
                 human_approved=True,
             )
             retired = store.retire(lesson.lesson_id, reason="superseded")
@@ -160,11 +372,19 @@ class LearningStoreTests(unittest.TestCase):
                 failure_evidence=failure_ref,
                 success_evidence=success_ref,
             )
-            _, verification_one = self._outcome_pair(store, "export-verification-one")
-            _, verification_two = self._outcome_pair(store, "export-verification-two")
+            verification_one = self._lesson_trial(
+                store, lesson.lesson_id, "export-verification-one", expected=True, applied=True
+            )
+            verification_two = self._lesson_trial(
+                store, lesson.lesson_id, "export-verification-two", expected=True, applied=True
+            )
+            negative_control = self._lesson_trial(
+                store, lesson.lesson_id, "export-negative", expected=False, applied=False
+            )
             store.promote(
                 lesson.lesson_id,
                 verification_refs=(verification_one, verification_two),
+                negative_control_refs=(negative_control,),
             )
 
             exported = store.redacted_export()

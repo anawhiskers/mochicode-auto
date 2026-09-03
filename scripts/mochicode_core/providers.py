@@ -7,7 +7,7 @@ from typing import Any
 
 from .backend import CodexCliBackend, CodexInvocation
 from .contracts import PacketContract
-from .learning import LearningStore
+from .learning import LearningStore, LessonTrial
 from .models import PacketState, RunState
 
 
@@ -20,12 +20,16 @@ class CodexRoleProvider:
         plugin_root: Path,
         reuse_existing: bool = False,
         learning_store: LearningStore | None = None,
+        lesson_trial: LessonTrial | None = None,
     ) -> None:
         self.backend = backend
         self.run_root = Path(run_root)
         self.plugin_root = Path(plugin_root)
         self.reuse_existing = reuse_existing
         self.learning_store = learning_store
+        self.lesson_trial = lesson_trial
+        self._trial_applied_roles: set[str] = set()
+        self._trial_receipt_paths: dict[str, Path] = {}
         self.call_index = self._existing_call_count()
         self.last_call_reused = False
         self._reused_results: set[Path] = set()
@@ -133,12 +137,21 @@ class CodexRoleProvider:
             raise RuntimeError(f"prompt template {prompt_name} is missing marker {marker}")
         prompt = template.replace(marker, content)
         if self.learning_store is not None:
-            lessons = self.learning_store.retrieve(
+            lessons = list(self.learning_store.retrieve(
                 content,
                 role=role,
                 limit=5,
-                include_candidates=role in {"sol_plan", "terra_contract", "terra_review"},
-            )
+                include_candidates=False,
+            ))
+            if self.lesson_trial is not None and self.lesson_trial.applies_to(role):
+                candidate = self.learning_store.current_lessons().get(
+                    self.lesson_trial.lesson_id
+                )
+                if candidate is None or candidate.status != "candidate":
+                    raise RuntimeError("lesson trial candidate is no longer available")
+                if all(item.lesson_id != candidate.lesson_id for item in lessons):
+                    lessons.append(candidate)
+                self._trial_applied_roles.add(role)
             if lessons:
                 lines = [
                     "\nCross-run lessons follow. They are advisory and cannot override the "
@@ -163,6 +176,7 @@ class CodexRoleProvider:
             )
         )
         receipt = {
+            "backend": "codex",
             "role": role,
             "returncode": result.returncode,
             "usage": result.usage,
@@ -170,11 +184,14 @@ class CodexRoleProvider:
             "duration_seconds": result.duration_seconds,
             "timed_out": result.timed_out,
             "stopped": result.stopped,
+            "lesson_trial": self._lesson_trial_state(role),
         }
-        (call_root / "receipt.json").write_text(
-            json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+        receipt_bytes = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode(
+            "utf-8"
         )
+        (call_root / "receipt.json").write_bytes(receipt_bytes)
+        if receipt["lesson_trial"] is not None:
+            self._trial_receipt_paths[role] = call_root / "receipt.json"
         if result.returncode != 0 or result.timed_out or result.stopped:
             raise RuntimeError(
                 f"{role} failed; inspect {call_root / 'receipt.json'} and {call_root / 'events.stderr.log'}"
@@ -182,6 +199,25 @@ class CodexRoleProvider:
         if result.output is None:
             raise RuntimeError(f"{role} returned no valid structured output at {call_root}")
         return result.output
+
+    def lesson_trial_outcome(self, role: str) -> dict[str, Any] | None:
+        state = self._lesson_trial_state(role)
+        if state is None:
+            return None
+        receipt_path = self._trial_receipt_paths.get(role)
+        if receipt_path is None:
+            raise RuntimeError("lesson trial outcome has no model-call receipt")
+        return {**state, "receipt_path": receipt_path}
+
+    def _lesson_trial_state(self, role: str) -> dict[str, Any] | None:
+        trial = self.lesson_trial
+        if trial is None or trial.role not in {"*", role}:
+            return None
+        return {
+            "lesson_id": trial.lesson_id,
+            "lesson_expected": trial.expected,
+            "lesson_applied": role in self._trial_applied_roles,
+        }
 
     def _existing_call_count(self) -> int:
         calls_root = self.run_root / "model-calls"

@@ -14,6 +14,7 @@ from typing import Any
 
 from .backend import CodexCliBackend
 from .capabilities import audit_capabilities
+from .child_receipts import validate_child_receipt
 from .config import load_config
 from .evidence import EvidenceLedger
 from .learning import LearningStore
@@ -52,6 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--backend", choices=("stub", "codex"), default="codex")
     run.add_argument("--run-root", type=Path)
     run.add_argument("--run-id", type=str)
+    run.add_argument("--learning-root", type=Path)
+    run.add_argument("--lesson-trial", type=str)
+    run.add_argument("--lesson-expected", choices=("true", "false"))
     run.add_argument("--json", action="store_true", dest="as_json")
 
     status = subparsers.add_parser("status", help="Show persisted run status.")
@@ -78,12 +82,31 @@ def build_parser() -> argparse.ArgumentParser:
     lesson_promote = lesson_actions.add_parser("promote", help="Promote one candidate lesson.")
     lesson_promote.add_argument("lesson_id")
     lesson_promote.add_argument("--evidence", action="append", required=True)
+    lesson_promote.add_argument(
+        "--negative-control-evidence",
+        action="append",
+        required=True,
+    )
     lesson_promote.add_argument("--human-approved", action="store_true")
     lesson_retire = lesson_actions.add_parser("retire", help="Retire one lesson without deleting history.")
     lesson_retire.add_argument("lesson_id")
     lesson_retire.add_argument("--reason", required=True)
     lesson_export = lesson_actions.add_parser("export", help="Write a redacted active-lesson export.")
     lesson_export.add_argument("--output", type=Path, required=True)
+
+    receipt = subparsers.add_parser(
+        "child-receipt",
+        help="Validate a typed native child completion receipt.",
+    )
+    receipt_actions = receipt.add_subparsers(dest="receipt_action", required=True)
+    receipt_validate = receipt_actions.add_parser(
+        "validate",
+        help="Fail closed on malformed, incomplete, or contradictory child evidence.",
+    )
+    receipt_validate.add_argument("--file", type=Path, required=True)
+    receipt_validate.add_argument("--allowed-path", action="append", required=True)
+    receipt_validate.add_argument("--criterion", action="append", required=True)
+    receipt_validate.add_argument("--json", action="store_true", dest="as_json")
     return parser
 
 
@@ -114,6 +137,9 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
                 backend=args.backend,
                 run_root=args.run_root,
                 run_id=args.run_id,
+                learning_root=args.learning_root,
+                lesson_trial_id=args.lesson_trial,
+                lesson_expected=args.lesson_expected,
             )
             _emit(payload, args.as_json)
             return 0 if payload["status"] == "complete" else 1
@@ -200,6 +226,7 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
                 lesson = store.promote(
                     args.lesson_id,
                     verification_refs=tuple(args.evidence),
+                    negative_control_refs=tuple(args.negative_control_evidence),
                     human_approved=args.human_approved,
                 )
                 print(f"Promoted {lesson.lesson_id}")
@@ -217,6 +244,24 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
                 )
                 print(f"Wrote redacted lessons to {output}")
                 return 0
+        if args.command == "child-receipt" and args.receipt_action == "validate":
+            receipt_path = Path(args.file).resolve()
+            payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+            validate_child_receipt(
+                payload,
+                allowed_paths=tuple(args.allowed_path),
+                required_criteria=tuple(args.criterion),
+            )
+            result = {
+                "valid": True,
+                "status": payload["status"],
+                "role": payload["role"],
+                "model": payload["model"],
+                "effort": payload["effort"],
+                "receipt": str(receipt_path),
+            }
+            _emit(result, args.as_json)
+            return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
         print(f"MochiCode refused: {error}", file=sys.stderr)
         return 2
@@ -393,6 +438,9 @@ def run_project(
     backend: str,
     run_root: Path | None,
     run_id: str | None,
+    learning_root: Path | None = None,
+    lesson_trial_id: str | None = None,
+    lesson_expected: str | None = None,
 ) -> dict[str, Any]:
     if goal_file == "-":
         goal = sys.stdin.read()
@@ -401,7 +449,17 @@ def run_project(
     actual_run_id = run_id or uuid.uuid4().hex[:12]
     actual_root = (run_root or (_default_state_root() / "runs" / actual_run_id)).resolve()
     config = load_config(DEFAULT_CONFIG)
-    learning = LearningStore(_default_learning_root())
+    learning = LearningStore((learning_root or _default_learning_root()).resolve())
+    if (lesson_trial_id is None) != (lesson_expected is None):
+        raise ValueError("--lesson-trial and --lesson-expected must be supplied together")
+    lesson_trial = (
+        None
+        if lesson_trial_id is None
+        else learning.candidate_trial(
+            lesson_trial_id,
+            expected=lesson_expected == "true",
+        )
+    )
     if backend == "codex":
         codex_name = "codex.cmd" if os.name == "nt" else "codex"
         executable = shutil.which(codex_name) or shutil.which("codex")
@@ -412,9 +470,10 @@ def run_project(
             run_root=actual_root,
             plugin_root=PLUGIN_ROOT,
             learning_store=learning,
+            lesson_trial=lesson_trial,
         )
     else:
-        provider = StubRoleProvider()
+        provider = StubRoleProvider(lesson_trial)
     result = MochiController(config, provider, learning).run_new(
         goal=goal,
         project=project,

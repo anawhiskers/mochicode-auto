@@ -36,9 +36,9 @@ class RoutingContractTests(unittest.TestCase):
         self.assertEqual(limits["active_child_ceiling"], 8)
         self.assertTrue(limits["ceiling_is_hard"])
         self.assertTrue(limits["ceiling_applies_where_host_supported"])
-        self.assertEqual(limits["default_wave_size"], 3)
-        self.assertEqual(limits["max_wave_size"], 8)
-        self.assertEqual(limits["waves"], "unlimited")
+        self.assertEqual(limits["default_wave_size"], 2)
+        self.assertEqual(limits["max_automatic_wave_size"], 3)
+        self.assertEqual(limits["waves"], "bounded_by_goal_and_budgets")
         self.assertEqual(self.catalog["sole_top_level_workflow"], "mochicode-auto")
         self.assertTrue(routing["automatic"])
         self.assertEqual(routing["user_input_required"], "goal_only")
@@ -47,7 +47,22 @@ class RoutingContractTests(unittest.TestCase):
         self.assertTrue(routing["luna_medium_worker"]["requires_real_child_receipt"])
         self.assertEqual(routing["luna_medium_worker"]["small_sequential_fallback"], "direct_sol")
         self.assertEqual(routing["sol_led_fanout"]["normal_live_child_limit"], 3)
+        self.assertEqual(routing["fresh_verifier"]["model"], "gpt-5.6-sol")
+        self.assertEqual(routing["fresh_verifier"]["max_reviewers"], 1)
+        self.assertEqual(routing["fresh_verifier"]["max_repairs"], 1)
+        self.assertTrue(routing["fresh_verifier"]["read_only"])
+        self.assertTrue(routing["fresh_verifier"]["evidence_bound"])
         self.assertFalse(routing["deterministic_controller"]["automatic_selection"])
+
+    def test_portable_limits_match_the_machine_contract(self) -> None:
+        portable = (
+            PLUGIN_ROOT / "portable" / "docs" / "MOCHICODE-HYBRID-ROUTING.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Automatic waves start with two and cap at three", portable)
+        self.assertIn("Total waves are bounded by the goal", portable)
+        self.assertNotIn("Total waves are unlimited", portable)
+        self.assertNotIn("larger waves earn benchmark promotion", portable)
 
     def test_plan_and_contract_schema_required_fields_are_unchanged(self) -> None:
         plan = json.loads((PLUGIN_ROOT / "schemas" / "plan.schema.json").read_text(encoding="utf-8"))
@@ -87,13 +102,13 @@ class RoutingContractTests(unittest.TestCase):
         )
 
     def test_core_role_split_is_direct_first_and_quality_gated(self) -> None:
-        self.assertIn("Sol is the default substantive parent", self.skill_text)
+        self.assertIn("Sol is the substantive parent", self.skill_text)
         self.assertIn("Direct Sol is a stock-quality passthrough", self.skill_text)
-        self.assertIn("preserve the user's original goal", self.skill_text)
-        self.assertIn("Luna Medium is a bounded worker for sizable independent leaves", self.skill_text)
-        self.assertIn("Luna Max is an escalation", self.skill_text)
-        self.assertIn("Terra is not part of the default native path", self.skill_text)
-        self.assertIn("experimental controller run", self.skill_text)
+        self.assertIn("Preserve the user's original goal", self.skill_text)
+        self.assertIn("Bounded Luna Medium worker", self.skill_text)
+        self.assertIn("Luna Max only after failed acceptance", self.skill_text)
+        self.assertIn("Terra is absent from the default native path", self.skill_text)
+        self.assertIn("only in the experimental route", self.skill_text)
 
     def test_sol_and_human_own_product_and_visual_quality(self) -> None:
         for decision_area in (
@@ -102,31 +117,39 @@ class RoutingContractTests(unittest.TestCase):
             "UI",
             "UX",
             "motion",
-            "major planning",
         ):
             self.assertIn(decision_area, self.skill_text)
         self.assertIn("Use High normally", self.skill_text)
-        self.assertIn("Human judgment is final", self.skill_text)
+        self.assertIn("human judgment", self.skill_text)
         self.assertIn("AI-slop", self.skill_text)
-        self.assertIn("Before a worker edits product behavior", self.skill_text)
+        self.assertIn("cannot redesign the product", self.skill_text)
 
     def test_sol_controls_bounded_effort_and_critic_escalation(self) -> None:
-        self.assertIn("Sol parent selects and records every child model and effort automatically", self.skill_text)
-        self.assertIn("Sol High is the substantive default", self.skill_text)
-        self.assertIn("When a Luna worker is justified, Medium is the first implementation effort", self.skill_text)
-        self.assertIn("Never label parent-executed work as Luna", self.skill_text)
-        self.assertIn("three fresh read-only judges", self.skill_text)
-        self.assertIn("at most one integrated repair pass", self.skill_text)
+        self.assertIn("Sol High is the default", self.skill_text)
+        self.assertIn("Bounded Luna Medium worker", self.skill_text)
+        self.assertIn("Never report Luna work without a real child receipt", self.skill_text)
+        self.assertIn("one fresh read-only Sol High verifier", self.skill_text)
+        self.assertIn("at most one repair", self.skill_text)
+
+    def test_skill_entrypoint_uses_progressive_disclosure(self) -> None:
+        self.assertLess(len(self.skill_text.encode("utf-8")), 9000)
+        for reference in (
+            "references/workflow.md",
+            "references/safety.md",
+            "references/commands.md",
+            "references/skill-system.md",
+        ):
+            self.assertIn(reference, self.skill_text)
+        self.assertNotIn("baseline_argv", self.skill_text)
+        self.assertNotIn("expected_failure_codes", self.skill_text)
 
     def test_skill_prevents_false_blocks_and_empty_progress(self) -> None:
-        self.assertIn("A human checkpoint is a readiness state", self.skill_text)
-        self.assertIn("Before reporting a blocker", self.skill_text)
-        self.assertIn("Internal failures are work, not blockers", self.skill_text)
-        self.assertIn("The parent remains responsible when orchestration machinery fails", self.skill_text)
-        self.assertIn("A valid blocked goal requires a specific human-only action", self.skill_text)
-        self.assertIn('Never convert "I do not know yet,"', self.skill_text)
-        self.assertIn("Do not emit repeated waiting messages", self.skill_text)
-        self.assertIn("role, model and effort, owned paths", self.skill_text)
+        self.assertIn("future human test is readiness work, not a blocker", self.skill_text)
+        self.assertIn("Internal failures are work", self.skill_text)
+        self.assertIn("A valid blocker requires a specific human-only", self.skill_text)
+        self.assertIn("After two matching failures, change method", self.skill_text)
+        self.assertIn("Do not emit repeated waiting updates", self.skill_text)
+        self.assertIn("role, model, effort, owned paths", self.skill_text)
 
 
 if __name__ == "__main__":

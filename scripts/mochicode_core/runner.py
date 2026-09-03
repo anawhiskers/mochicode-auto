@@ -23,7 +23,7 @@ from .contracts import (
 )
 from .evidence import EvidenceLedger
 from .gitops import GitOperationError, GitWorkspaceManager, IntegrationWorkspace, PacketWorkspace
-from .learning import LearningStore
+from .learning import LearningStore, LessonTrial
 from .models import PacketState, PacketStatus, RunBudget, RunState
 from .protection import (
     InvalidProtectedPattern,
@@ -83,7 +83,12 @@ class RunResult:
 
 
 class StubRoleProvider:
+    def __init__(self, lesson_trial: LessonTrial | None = None) -> None:
+        self.lesson_trial = lesson_trial
+        self._trial_applied_roles: set[str] = set()
+
     def plan(self, goal: str, workspace: Path) -> dict[str, Any]:
+        self._mark_trial("sol_plan")
         return {
             "summary": "Create one runnable path, one independent support path, then integrate.",
             "packets": [
@@ -124,6 +129,7 @@ class StubRoleProvider:
         }
 
     def contract(self, packet: PacketState, workspace: Path) -> dict[str, Any]:
+        self._mark_trial("terra_contract")
         targets = {
             "vertical": ("app.txt", "runnable\n"),
             "support": ("support.txt", "support\n"),
@@ -160,6 +166,7 @@ class StubRoleProvider:
         workspace: Path,
         attempt: int,
     ) -> dict[str, Any]:
+        self._mark_trial("luna_execute")
         if packet.packet_id == "vertical" and attempt == 1:
             return {
                 "summary": "Intentional first-attempt failure used to prove queue rotation.",
@@ -188,6 +195,7 @@ class StubRoleProvider:
         workspace: Path,
         review_bundle: dict[str, Any],
     ) -> dict[str, Any]:
+        self._mark_trial("terra_review")
         return {
             "verdict": "GREEN",
             "findings": [],
@@ -201,6 +209,7 @@ class StubRoleProvider:
         workspace: Path,
         final_bundle: dict[str, Any],
     ) -> dict[str, Any]:
+        self._mark_trial("sol_final")
         required = {
             "app.txt": "runnable\n",
             "support.txt": "support\n",
@@ -229,6 +238,24 @@ class StubRoleProvider:
                 else "Do not merge the integration branch."
             ),
         }
+
+    def lesson_trial_outcome(self, role: str) -> dict[str, Any] | None:
+        trial = getattr(self, "lesson_trial", None)
+        if trial is None or trial.role not in {"*", role}:
+            return None
+        return {
+            "lesson_id": trial.lesson_id,
+            "lesson_expected": trial.expected,
+            "lesson_applied": role in getattr(self, "_trial_applied_roles", set()),
+            "receipt_path": None,
+        }
+
+    def _mark_trial(self, role: str) -> None:
+        trial = getattr(self, "lesson_trial", None)
+        if trial is not None and trial.applies_to(role):
+            if not hasattr(self, "_trial_applied_roles"):
+                self._trial_applied_roles = set()
+            self._trial_applied_roles.add(role)
 
 
 class MochiController:
@@ -2419,16 +2446,34 @@ class MochiController:
         if self.learning_store is None:
             return
         failure_class = None if success else self._failure_class(failure_summary)
-        outcome = self.learning_store.record_outcome(
-            run_id=state.run_id,
-            packet_id=packet.packet_id,
-            role=role,
-            success=success,
-            failure_class=failure_class,
-            fingerprint=fingerprint,
-            goal_hash=hashlib.sha256(state.goal.encode("utf-8")).hexdigest(),
-            evidence_ref=evidence_ref,
-        )
+        trial_fields: dict[str, Any] = {}
+        trial_receipt: Path | None = None
+        trial_outcome = getattr(self.provider, "lesson_trial_outcome", None)
+        if callable(trial_outcome):
+            reported = trial_outcome(role)
+            if reported is not None:
+                trial_fields = dict(reported)
+                raw_receipt = trial_fields.pop("receipt_path", None)
+                if raw_receipt is not None:
+                    trial_receipt = Path(raw_receipt)
+        outcome_fields = {
+            "run_id": state.run_id,
+            "packet_id": packet.packet_id,
+            "role": role,
+            "success": success,
+            "failure_class": failure_class,
+            "fingerprint": fingerprint,
+            "goal_hash": hashlib.sha256(state.goal.encode("utf-8")).hexdigest(),
+            "evidence_ref": evidence_ref,
+        }
+        if trial_receipt is not None:
+            outcome = self.learning_store.record_trial_outcome(
+                receipt_path=trial_receipt,
+                **outcome_fields,
+                **trial_fields,
+            )
+        else:
+            outcome = self.learning_store.record_outcome(**outcome_fields)
         if not success:
             return
         prior = self.learning_store.latest_failed_outcome(

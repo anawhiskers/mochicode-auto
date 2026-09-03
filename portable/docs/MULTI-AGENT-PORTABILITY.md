@@ -1,6 +1,6 @@
 # Multi-agent portability
 
-This release has one model-neutral workflow core, first-class adapters for Codex, Claude, Kimi, and Z.ai, plus a generic adapter for any coding agent that documents a Markdown instruction file. The core delegates by responsibility, not provider branding: authority parent, bounded worker, optional reviewer panel, and deterministic controller.
+This release has one model-neutral workflow core, first-class adapters for Codex, Claude, Kimi, and Z.ai, plus a generic adapter for any coding agent that documents a Markdown instruction file. The core delegates by responsibility, not provider branding: authority parent, bounded worker, optional fresh verifier, and deterministic controller.
 
 ## Use on this PC
 

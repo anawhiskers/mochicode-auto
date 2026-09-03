@@ -265,6 +265,27 @@
       "normal_live_child_limit": 3,
       "continue_only_after_measured_first_wave_gain": true
     },
+    "fresh_verifier": {
+      "automatic": true,
+      "when_any": [
+        "authentication_or_authorization",
+        "destructive_or_data_integrity",
+        "public_compatibility",
+        "concurrency",
+        "cross_system_integration",
+        "weak_or_missing_oracle",
+        "repaired_first_attempt",
+        "consequential_interactive_behavior",
+        "explicit_quality_audit"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "read_only": true,
+      "evidence_bound": true,
+      "max_reviewers": 1,
+      "max_repairs": 1,
+      "exceptional_panel_requires_explicit_benchmark_or_multidomain_decision": true
+    },
     "deterministic_controller": {
       "promotion_status": "experimental_unpromoted",
       "automatic_selection": false,
@@ -292,9 +313,9 @@
       "active_child_ceiling": 8,
       "ceiling_is_hard": true,
       "ceiling_applies_where_host_supported": true,
-      "default_wave_size": 3,
-      "max_wave_size": 8,
-      "waves": "unlimited"
+      "default_wave_size": 2,
+      "max_automatic_wave_size": 3,
+      "waves": "bounded_by_goal_and_budgets"
     }
   }
 }

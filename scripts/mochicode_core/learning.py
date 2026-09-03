@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from dataclasses import dataclass
 import hashlib
+import json
 from pathlib import Path
 import re
 import time
@@ -25,7 +26,26 @@ class Lesson:
     retirement_reason: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class LessonTrial:
+    lesson_id: str
+    role: str
+    expected: bool
+
+    def applies_to(self, role: str) -> bool:
+        return self.expected and self.role in {"*", role}
+
+
 class LearningStore:
+    TRIAL_FIELDS = frozenset(
+        {
+            "lesson_id",
+            "lesson_expected",
+            "lesson_applied",
+            "lesson_backend",
+            "model_receipt_hash",
+        }
+    )
     FAILURE_CLASSES = {
         "protected_input_changed",
         "permission_read_only",
@@ -43,6 +63,11 @@ class LearningStore:
             "fingerprint",
             "goal_hash",
             "evidence_ref",
+            "lesson_id",
+            "lesson_expected",
+            "lesson_applied",
+            "lesson_backend",
+            "model_receipt_hash",
         }
     )
     REQUIRED_OUTCOME_FIELDS = frozenset(
@@ -63,6 +88,32 @@ class LearningStore:
         self.lessons = EvidenceLedger(self.root / "lessons.jsonl")
 
     def record_outcome(self, **fields: Any) -> dict[str, Any]:
+        if self.TRIAL_FIELDS & set(fields):
+            raise ValueError("lesson trial outcomes require record_trial_outcome")
+        return self._append_outcome(fields)
+
+    def record_trial_outcome(
+        self,
+        *,
+        receipt_path: Path,
+        **fields: Any,
+    ) -> dict[str, Any]:
+        required = {"lesson_id", "lesson_expected", "lesson_applied"}
+        if not required <= set(fields):
+            raise ValueError("lesson trial outcome is missing trial fields")
+        forbidden = {"lesson_backend", "model_receipt_hash"} & set(fields)
+        if forbidden:
+            raise ValueError("lesson trial provenance is computed from the receipt")
+        receipt_hash = self._attest_trial_receipt(Path(receipt_path), fields)
+        return self._append_outcome(
+            {
+                **fields,
+                "lesson_backend": "codex",
+                "model_receipt_hash": receipt_hash,
+            }
+        )
+
+    def _append_outcome(self, fields: dict[str, Any]) -> dict[str, Any]:
         unknown = sorted(set(fields) - self.OUTCOME_FIELDS)
         if unknown:
             raise ValueError(f"unknown outcome fields: {unknown}")
@@ -78,12 +129,25 @@ class LearningStore:
         record.update(fields)
         return self.outcomes.append(record)
 
+    def candidate_trial(self, lesson_id: str, *, expected: bool) -> LessonTrial:
+        self._require_valid()
+        lesson = self.current_lessons().get(lesson_id)
+        if lesson is None:
+            raise KeyError(lesson_id)
+        if lesson.status != "candidate":
+            raise ValueError("lesson trials require a candidate lesson")
+        return LessonTrial(
+            lesson_id=lesson.lesson_id,
+            role=lesson.role,
+            expected=expected,
+        )
+
     @classmethod
     def _validate_outcome_fields(cls, fields: dict[str, Any]) -> None:
         for field, value in fields.items():
-            if field == "success":
+            if field in {"success", "lesson_expected", "lesson_applied"}:
                 if type(value) is not bool:
-                    raise ValueError("outcome field 'success' must be of type bool")
+                    raise ValueError(f"outcome field '{field}' must be of type bool")
                 continue
             if field == "failure_class":
                 if value is None:
@@ -103,6 +167,18 @@ class LearningStore:
             role = fields["role"]
             if role not in cls.ROLES:
                 raise ValueError("outcome field 'role' has an unsupported enum")
+        lesson_fields = {
+            "lesson_id",
+            "lesson_expected",
+            "lesson_applied",
+            "lesson_backend",
+            "model_receipt_hash",
+        }
+        present_lesson_fields = lesson_fields & set(fields)
+        if present_lesson_fields and present_lesson_fields != lesson_fields:
+            raise ValueError(
+                "lesson trial outcomes require lesson_id, lesson_expected, and lesson_applied"
+            )
 
     @classmethod
     def _validate_outcome_string(cls, field: str, value: str) -> None:
@@ -177,6 +253,7 @@ class LearningStore:
         lesson_id: str,
         *,
         verification_refs: tuple[str, ...],
+        negative_control_refs: tuple[str, ...] = (),
         human_approved: bool = False,
     ) -> Lesson:
         self._require_valid()
@@ -197,19 +274,60 @@ class LearningStore:
             for ref, record in zip(unique_refs, verification_records)
             if ref in new_refs
         ]
+        for record in new_records:
+            if (
+                record.get("lesson_id") != current.lesson_id
+                or record.get("lesson_expected") is not True
+                or record.get("lesson_applied") is not True
+                or record.get("lesson_backend") != "codex"
+                or not self._is_hash(str(record.get("model_receipt_hash", "")))
+            ):
+                raise ValueError(
+                    "positive verification evidence must bind expected lesson activation to a Codex model receipt"
+                )
+            self._verify_stored_trial_receipt(record)
         if not human_approved and len(new_refs) < 2:
             raise ValueError("automatic promotion requires two independent verification refs")
         if not human_approved and len({str(record.get("run_id")) for record in new_records}) < 2:
             raise ValueError("automatic promotion requires evidence from two independent runs")
         if human_approved and not new_refs:
             raise ValueError("human promotion still requires an evidence reference")
+        unique_negative_refs = tuple(
+            dict.fromkeys(ref for ref in negative_control_refs if ref)
+        )
+        if not unique_negative_refs:
+            raise ValueError("lesson promotion requires a successful negative-control reference")
+        negative_records = [
+            self._known_outcome(ref, expected_success=True)
+            for ref in unique_negative_refs
+        ]
+        for record in negative_records:
+            if (
+                record.get("lesson_id") != current.lesson_id
+                or record.get("lesson_expected") is not False
+                or record.get("lesson_applied") is not False
+                or record.get("lesson_backend") != "codex"
+                or not self._is_hash(str(record.get("model_receipt_hash", "")))
+            ):
+                raise ValueError(
+                    "negative-control evidence must bind inactive lesson state to a Codex model receipt"
+                )
+            self._verify_stored_trial_receipt(record)
+        positive_run_ids = {str(record.get("run_id")) for record in new_records}
+        negative_run_ids = {str(record.get("run_id")) for record in negative_records}
+        if positive_run_ids & negative_run_ids:
+            raise ValueError("negative-control evidence must come from an independent run")
         lesson = Lesson(
             lesson_id=current.lesson_id,
             role=current.role,
             scope=current.scope,
             text=current.text,
             tags=current.tags,
-            evidence_refs=tuple(dict.fromkeys((*current.evidence_refs, *unique_refs))),
+            evidence_refs=tuple(
+                dict.fromkeys(
+                    (*current.evidence_refs, *unique_refs, *unique_negative_refs)
+                )
+            ),
             status="active",
             created_at=current.created_at,
             updated_at=time.time(),
@@ -220,6 +338,7 @@ class LearningStore:
                 "schema_version": 1,
                 "human_approved": human_approved,
                 "verification_refs": list(unique_refs),
+                "negative_control_refs": list(unique_negative_refs),
                 "lesson": asdict(lesson),
             }
         )
@@ -390,6 +509,80 @@ class LearningStore:
         ):
             raise ValueError("evidence reference is not known hash-chained evidence")
         return record
+
+    def _attest_trial_receipt(
+        self,
+        receipt_path: Path,
+        fields: dict[str, Any],
+    ) -> str:
+        if not receipt_path.is_file() or receipt_path.stat().st_size > 1_000_000:
+            raise ValueError("lesson trial receipt is missing or oversized")
+        receipt_bytes = receipt_path.read_bytes()
+        try:
+            receipt = json.loads(receipt_bytes)
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("lesson trial receipt is not valid JSON") from error
+        self._validate_trial_receipt(receipt, fields)
+        receipt_hash = hashlib.sha256(receipt_bytes).hexdigest()
+        trusted_root = self.root / "trial-receipts"
+        trusted_root.mkdir(parents=True, exist_ok=True)
+        trusted_path = trusted_root / f"{receipt_hash}.json"
+        if trusted_path.exists():
+            if trusted_path.read_bytes() != receipt_bytes:
+                raise ValueError("lesson trial receipt hash collision")
+        else:
+            trusted_path.write_bytes(receipt_bytes)
+        return receipt_hash
+
+    def _verify_stored_trial_receipt(self, record: dict[str, Any]) -> None:
+        receipt_hash = str(record.get("model_receipt_hash", ""))
+        if not self._is_hash(receipt_hash):
+            raise ValueError("lesson trial outcome has no valid receipt hash")
+        trusted_path = self.root / "trial-receipts" / f"{receipt_hash}.json"
+        if not trusted_path.is_file() or trusted_path.stat().st_size > 1_000_000:
+            raise ValueError("lesson trial receipt evidence is missing")
+        receipt_bytes = trusted_path.read_bytes()
+        if hashlib.sha256(receipt_bytes).hexdigest() != receipt_hash:
+            raise ValueError("lesson trial receipt evidence was tampered")
+        try:
+            receipt = json.loads(receipt_bytes)
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("lesson trial receipt evidence is invalid") from error
+        self._validate_trial_receipt(receipt, record)
+
+    @staticmethod
+    def _validate_trial_receipt(receipt: Any, fields: dict[str, Any]) -> None:
+        if not isinstance(receipt, dict):
+            raise ValueError("lesson trial receipt must be an object")
+        required = {
+            "backend",
+            "role",
+            "returncode",
+            "timed_out",
+            "stopped",
+            "lesson_trial",
+        }
+        if not required <= set(receipt):
+            raise ValueError("lesson trial receipt is missing required evidence")
+        trial = receipt.get("lesson_trial")
+        if not isinstance(trial, dict) or set(trial) != {
+            "lesson_id",
+            "lesson_expected",
+            "lesson_applied",
+        }:
+            raise ValueError("lesson trial receipt has invalid trial state")
+        if (
+            receipt.get("backend") != "codex"
+            or type(receipt.get("returncode")) is not int
+            or receipt.get("returncode") != 0
+            or receipt.get("timed_out") is not False
+            or receipt.get("stopped") is not False
+            or receipt.get("role") != fields.get("role")
+            or trial.get("lesson_id") != fields.get("lesson_id")
+            or trial.get("lesson_expected") is not fields.get("lesson_expected")
+            or trial.get("lesson_applied") is not fields.get("lesson_applied")
+        ):
+            raise ValueError("lesson trial receipt does not match the recorded outcome")
 
     @staticmethod
     def _is_hash(value: str) -> bool:

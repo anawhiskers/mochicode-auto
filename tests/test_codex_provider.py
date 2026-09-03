@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -7,6 +8,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +16,7 @@ sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
 
 from mochicode_core.backend import CodexCliBackend
 from mochicode_core.config import load_config
+from mochicode_core.learning import LearningStore
 from mochicode_core.models import PacketStatus
 from mochicode_core.providers import CodexRoleProvider
 from mochicode_core.runner import MochiController
@@ -93,6 +96,166 @@ def git(cwd: Path, *args: str) -> str:
 
 
 class CodexProviderTests(unittest.TestCase):
+    def test_candidate_trials_bind_model_receipts_and_promote_through_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "source"
+            source.mkdir()
+            git(source, "init")
+            (source / "README.md").write_text("base\n", encoding="utf-8")
+            git(source, "add", "README.md")
+            git(
+                source,
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "commit",
+                "-m",
+                "initial",
+            )
+            fake = root / "fake_codex.py"
+            fake.write_text(textwrap.dedent(FAKE_CODEX), encoding="utf-8")
+            config = load_config(PLUGIN_ROOT / "config" / "default.toml")
+            learning_root = root / "learning"
+            learning = LearningStore(learning_root)
+            failure = learning.record_outcome(
+                run_id="seed-run",
+                packet_id="seed-packet",
+                role="luna_execute",
+                success=False,
+                failure_class="verifier_failed",
+                fingerprint="seed-failure",
+                goal_hash="seed-goal",
+            )
+            recovery = learning.record_outcome(
+                run_id="seed-run",
+                packet_id="seed-packet",
+                role="luna_execute",
+                success=True,
+                failure_class=None,
+                fingerprint="seed-recovery",
+                goal_hash="seed-goal",
+            )
+            lesson = learning.propose_recovery_lesson(
+                role="luna_execute",
+                scope="ignored",
+                failure_class="verifier_failed",
+                tags=("ignored",),
+                failure_evidence=str(failure["record_hash"]),
+                success_evidence=str(recovery["record_hash"]),
+            )
+
+            refs: dict[bool, str] = {}
+            for expected in (True, False):
+                run_id = f"provider-trial-{str(expected).lower()}"
+                run_root = root / run_id
+                provider = CodexRoleProvider(
+                    CodexCliBackend((sys.executable, str(fake)), config),
+                    run_root=run_root,
+                    plugin_root=PLUGIN_ROOT,
+                    learning_store=learning,
+                    lesson_trial=learning.candidate_trial(
+                        lesson.lesson_id,
+                        expected=expected,
+                    ),
+                )
+                result = MochiController(config, provider, learning).run_new(
+                    goal="Build the app",
+                    project=source,
+                    run_root=run_root,
+                    run_id=run_id,
+                )
+                self.assertEqual(result.state.status, "complete")
+                matching = [
+                    item
+                    for item in learning.outcomes.records()
+                    if item.get("run_id") == run_id
+                    and item.get("role") == "luna_execute"
+                    and item.get("success") is True
+                ]
+                self.assertEqual(len(matching), 1)
+                record = matching[0]
+                self.assertEqual(record["lesson_backend"], "codex")
+                self.assertIs(record["lesson_expected"], expected)
+                self.assertIs(record["lesson_applied"], expected)
+                receipt_paths = list(
+                    run_root.glob("model-calls/*-luna_execute/receipt.json")
+                )
+                receipt_path = next(
+                    path
+                    for path in receipt_paths
+                    if hashlib.sha256(path.read_bytes()).hexdigest()
+                    == record["model_receipt_hash"]
+                )
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                self.assertEqual(receipt["lesson_trial"]["lesson_id"], lesson.lesson_id)
+                self.assertIs(receipt["lesson_trial"]["lesson_applied"], expected)
+                refs[expected] = str(record["record_hash"])
+
+            promoted = subprocess.run(
+                [
+                    sys.executable,
+                    str(PLUGIN_ROOT / "scripts" / "mochicode.py"),
+                    "lessons",
+                    "--learning-root",
+                    str(learning_root),
+                    "promote",
+                    lesson.lesson_id,
+                    "--evidence",
+                    refs[True],
+                    "--negative-control-evidence",
+                    refs[False],
+                    "--human-approved",
+                ],
+                cwd=PLUGIN_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+            self.assertEqual(promoted.returncode, 0, promoted.stderr)
+            self.assertEqual(
+                learning.current_lessons()[lesson.lesson_id].status,
+                "active",
+            )
+
+    def test_provider_never_injects_candidate_lessons(self) -> None:
+        class LearningProbe:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, object]] = []
+
+            def retrieve(self, query: str, **kwargs: object) -> tuple[object, ...]:
+                self.calls.append({"query": query, **kwargs})
+                return ()
+
+        class BackendProbe:
+            def invoke(self, invocation: object) -> object:
+                return SimpleNamespace(
+                    returncode=0,
+                    usage={},
+                    thread_id="probe",
+                    duration_seconds=0.01,
+                    timed_out=False,
+                    stopped=False,
+                    output={"summary": "probe", "packets": []},
+                )
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            learning = LearningProbe()
+            provider = CodexRoleProvider(
+                BackendProbe(),
+                run_root=root / "run",
+                plugin_root=PLUGIN_ROOT,
+                learning_store=learning,
+            )
+
+            provider.plan("probe candidate isolation", root)
+
+            self.assertEqual(len(learning.calls), 1)
+            self.assertIs(learning.calls[0]["include_candidates"], False)
+
     def test_process_backed_role_chain_reaches_reviewed_integration(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

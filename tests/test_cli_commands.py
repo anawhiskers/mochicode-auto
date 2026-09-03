@@ -19,6 +19,7 @@ sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
 
 from mochicode_core.cli import run_cli
 from mochicode_core.evidence import EvidenceLedger
+from mochicode_core.learning import LearningStore
 from mochicode_core.runner import MochiController
 
 
@@ -38,6 +39,112 @@ def invoke(
 
 
 class CliCommandTests(unittest.TestCase):
+    def test_stub_candidate_trials_are_recorded_but_cannot_promote(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = Path(raw)
+            source = base / "source"
+            source.mkdir()
+            subprocess.run(["git", "init"], cwd=source, check=True, capture_output=True)
+            (source / "README.md").write_text("trial\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=source, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=MochiCode",
+                    "-c",
+                    "user.email=mochicode@local.invalid",
+                    "commit",
+                    "-m",
+                    "trial baseline",
+                ],
+                cwd=source,
+                check=True,
+                capture_output=True,
+            )
+            learning_root = base / "learning"
+            store = LearningStore(learning_root)
+            failure = store.record_outcome(
+                run_id="seed-run",
+                packet_id="seed-packet",
+                role="luna_execute",
+                success=False,
+                failure_class="verifier_failed",
+                fingerprint="seed-failure",
+                goal_hash="seed-goal",
+            )
+            recovery = store.record_outcome(
+                run_id="seed-run",
+                packet_id="seed-packet",
+                role="luna_execute",
+                success=True,
+                failure_class=None,
+                fingerprint="seed-recovery",
+                goal_hash="seed-goal",
+            )
+            lesson = store.propose_recovery_lesson(
+                role="luna_execute",
+                scope="ignored",
+                failure_class="verifier_failed",
+                tags=("ignored",),
+                failure_evidence=str(failure["record_hash"]),
+                success_evidence=str(recovery["record_hash"]),
+            )
+            goal = base / "goal.md"
+            goal.write_text("Run the bounded lesson trial.", encoding="utf-8")
+
+            trial_refs: dict[bool, str] = {}
+            for expected in (True, False):
+                result = invoke(
+                    "run",
+                    "--project",
+                    str(source),
+                    "--goal-file",
+                    str(goal),
+                    "--backend",
+                    "stub",
+                    "--run-root",
+                    str(base / f"run-{str(expected).lower()}"),
+                    "--run-id",
+                    f"trial-{str(expected).lower()}",
+                    "--learning-root",
+                    str(learning_root),
+                    "--lesson-trial",
+                    lesson.lesson_id,
+                    "--lesson-expected",
+                    str(expected).lower(),
+                    "--json",
+                    timeout_seconds=240,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                matching = [
+                    item
+                    for item in store.outcomes.records()
+                    if item.get("run_id") == f"trial-{str(expected).lower()}"
+                    and item.get("role") == "luna_execute"
+                    and item.get("success") is True
+                ]
+                self.assertTrue(matching)
+                self.assertNotIn("lesson_id", matching[-1])
+                self.assertNotIn("model_receipt_hash", matching[-1])
+                trial_refs[expected] = str(matching[-1]["record_hash"])
+
+            promoted = invoke(
+                "lessons",
+                "--learning-root",
+                str(learning_root),
+                "promote",
+                lesson.lesson_id,
+                "--evidence",
+                trial_refs[True],
+                "--negative-control-evidence",
+                trial_refs[False],
+                "--human-approved",
+            )
+            self.assertEqual(promoted.returncode, 2)
+            self.assertIn("Codex model receipt", promoted.stderr)
+            self.assertEqual(store.current_lessons()[lesson.lesson_id].status, "candidate")
+
     def test_demo_status_stop_and_resume_are_reachable_from_normal_commands(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             base = Path(raw) / "demo"

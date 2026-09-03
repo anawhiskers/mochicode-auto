@@ -31,7 +31,7 @@ facts and rules that are not already covered there.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
 - Maximum orchestration depth is one, primary Sol parent to child. Children do not spawn descendants.
 - Eight active child threads is a host ceiling, not a target. Start with two and use no more than three live workers per wave until a larger wave is benchmark-promoted.
-- When a judge gate is warranted, use three fresh task-relevant read-only judges, one Sol adjudication, at most one integrated repair pass, then stop. For mixed UI-and-logic work, use product hierarchy, accessibility and interaction, and state integration as the default lenses; preserve visual preference for human comparison.
+- When observable risk warrants review, use one fresh evidence-bound read-only Sol High verifier, one Sol adjudication, at most one integrated repair, then rerun all checks and stop. Use three judges only for an explicit benchmark or a consequential multi-domain decision; preserve visual preference for human comparison.
 - For consequential interactive behavior, test applicable running, paused, re-entrant, edit-during-run, keyboard-focus, narrow-layout, and actual reduced-motion states.
 - Use worktrees or non-overlapping paths for independent writers. Validate every changed instruction,
   TOML, JSON, and skill file with the repository's real checks.

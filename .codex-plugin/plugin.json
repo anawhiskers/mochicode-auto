@@ -1,6 +1,6 @@
 {
   "name": "mochicode-auto",
-  "version": "0.1.2+codex.20260902201724",
+  "version": "0.1.3+codex.20260903024309",
   "description": "Keep stock-quality Sol direct and add proven Luna workers, bounded fan-out, or selective evidence gates only when their overhead is justified.",
   "author": {
     "name": "Ana Stephens"
@@ -17,7 +17,7 @@
   "interface": {
     "displayName": "Mochicode Auto",
     "shortDescription": "Adaptive quality-first Codex routing",
-    "longDescription": "Preserves stock Sol High behavior for substantive and small sequential work, uses a real Luna Medium child only for sizable independent implementation leaves that can repay delegation overhead, permits small Sol-led fan-out only for frozen disjoint leaves, and activates durable state or fresh-context judges only when their measured trigger applies. Model claims require session evidence or child receipts, and the deterministic controller remains an explicit unpromoted experiment.",
+    "longDescription": "Preserves stock Sol High behavior for substantive and small sequential work, uses a real Luna Medium child only for sizable independent leaves that repay delegation overhead, permits small Sol-led fan-out only after a vertical slice freezes disjoint interfaces, and activates one evidence-bound fresh verifier or durable state only when an observable trigger applies. Model claims require session evidence or child receipts, and the deterministic controller remains an explicit unpromoted experiment.",
     "developerName": "Ana Stephens",
     "category": "Productivity",
     "capabilities": [
@@ -27,7 +27,7 @@
     "defaultPrompt": [
       "Complete this goal using the smallest quality-proven automatic route.",
       "Keep stock Sol behavior unless a proven worker route clearly repays its overhead.",
-      "Use selective workers, state, and judges only when their trigger is present."
+      "Use a selective worker, fresh verifier, or durable state only when its observable trigger is present."
     ]
   }
 }
