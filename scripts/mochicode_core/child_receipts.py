@@ -76,7 +76,7 @@ def validate_child_receipt(
     if len(set(normalized_owned)) != len(normalized_owned):
         raise ChildReceiptError("child receipt owned_paths contains duplicates")
     for path in normalized_owned:
-        if not any(_path_matches(path, pattern) for pattern in allowed_paths):
+        if not any(path_matches(path, pattern) for pattern in allowed_paths):
             raise ChildReceiptError(f"child receipt claims an unowned path: {path}")
 
     raw_acceptance = _object_array(payload["acceptance_evidence"], "acceptance_evidence")
@@ -196,7 +196,7 @@ def _relative_path(value: str, label: str) -> str:
     return path.as_posix()
 
 
-def _path_matches(path: str, pattern: str) -> bool:
+def path_matches(path: str, pattern: str) -> bool:
     normalized_pattern = pattern.replace("\\", "/")
     if (
         not normalized_pattern

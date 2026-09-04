@@ -38,6 +38,12 @@ CORE_CONFIGS = {
         "model": "gpt-5.6-sol",
         "sandbox": "read-only",
     },
+    "mochicode-manager-implementer": {
+        "agent_name": "mochicode_manager_implementer",
+        "path": "config/agents/mochicode-manager-implementer.toml",
+        "model": "gpt-5.6-sol",
+        "sandbox": "workspace-write",
+    },
     "mochicode-terra-contract": {
         "agent_name": "mochicode_terra_contract",
         "path": "config/agents/mochicode-terra-contract.toml",
@@ -103,7 +109,7 @@ class RoleCatalogTests(unittest.TestCase):
                             {"native_delegation", "deterministic_controller"},
                         )
 
-    def test_only_four_core_agents_are_active_and_their_contracts_are_safe(self) -> None:
+    def test_only_five_core_agents_are_active_and_their_contracts_are_safe(self) -> None:
         self.assertEqual(set(self.catalog["core_agents"]), set(CORE_CONFIGS))
         agent_dir = PLUGIN_ROOT / "config" / "agents"
 
@@ -118,7 +124,12 @@ class RoleCatalogTests(unittest.TestCase):
                 self.assertEqual(raw["model"], expected["model"])
                 self.assertEqual(raw["sandbox_mode"], expected["sandbox"])
                 self.assertNotIn("model_context_window", raw)
-                self.assertNotIn("agents", raw)
+                if agent_id == "mochicode-manager-implementer":
+                    self.assertEqual(raw["agents"], {"enabled": False})
+                    self.assertEqual(raw["features"], {"multi_agent": False})
+                else:
+                    self.assertNotIn("agents", raw)
+                    self.assertNotIn("features", raw)
                 instructions = raw["developer_instructions"]
                 self.assertNotIn("1050000", instructions)
                 self.assertNotIn("danger" + "-full-access", instructions)
@@ -133,6 +144,21 @@ class RoleCatalogTests(unittest.TestCase):
         self.assertNotIn("service_tier", luna_config)
         self.assertFalse(self.catalog["core_agents"]["mochicode-sol"]["may_implement"])
         self.assertFalse(self.catalog["core_agents"]["mochicode-terra-review"]["may_implement"])
+        manager = self.catalog["core_agents"]["mochicode-manager-implementer"]
+        self.assertTrue(manager["may_implement"])
+        self.assertFalse(manager["may_spawn"])
+        self.assertEqual(manager["reasoning_effort"], "high")
+        manager_config = tomllib.loads(
+            (
+                PLUGIN_ROOT
+                / CORE_CONFIGS["mochicode-manager-implementer"]["path"]
+            ).read_text(encoding="utf-8")
+        )
+        manager_instructions = manager_config["developer_instructions"]
+        self.assertIn("role exactly `manager_implementer`", manager_instructions)
+        self.assertIn("Do not read or write memories", manager_instructions)
+        self.assertIn("Do not load optional skills or MCP", manager_instructions)
+        self.assertIn("The parent owns live UI checks", manager_instructions)
 
         repo_curator = self.catalog["archive_roles"]["repo_curator"]
         self.assertEqual(repo_curator["target_core_agent"], "mochicode-luna")

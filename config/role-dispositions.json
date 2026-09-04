@@ -13,6 +13,17 @@
       "may_implement": false,
       "may_spawn": false
     },
+    "mochicode-manager-implementer": {
+      "agent_name": "mochicode_manager_implementer",
+      "config_path": "config/agents/mochicode-manager-implementer.toml",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "sandbox": "workspace-write",
+      "phases": ["manager_phase_implementation"],
+      "may_implement": true,
+      "may_spawn": false,
+      "write_scope": ["active manager phase declared paths only"]
+    },
     "mochicode-terra-contract": {
       "agent_name": "mochicode_terra_contract",
       "config_path": "config/agents/mochicode-terra-contract.toml",
@@ -264,6 +275,45 @@
       "initial_workers": 2,
       "normal_live_child_limit": 3,
       "continue_only_after_measured_first_wave_gain": true
+    },
+    "manager_mode": {
+      "automatic_selection": false,
+      "automatic_shadow_classification": true,
+      "explicit_triggers": [
+        "[MOCHICODE_MANAGER]",
+        "manager mode",
+        "separate manager and implementer"
+      ],
+      "automatic_when_all": [
+        "implementation_request",
+        "three_to_six_acceptance_distinct_phases",
+        "wave_one_runnable_vertical_slice",
+        "at_least_six_production_files",
+        "at_least_two_repository_components",
+        "every_phase_has_an_oracle",
+        "final_integrated_oracle_exists",
+        "active_phase_decisions_are_frozen",
+        "one_sequential_writer",
+        "non_spawning_child_capability_confirmed",
+        "no_proven_fanout_advantage",
+        "heavier_controller_not_required"
+      ],
+      "manager_model": "gpt-5.6-sol",
+      "manager_reasoning_effort": "high",
+      "manager_escalation_effort": "max",
+      "manager_may_implement_active_phase": false,
+      "preferred_implementer": "direct_non_spawning_sol_high_child",
+      "fallback_before_write": "direct_sol_parent",
+      "max_automatic_phases": 6,
+      "max_explicit_phases": 12,
+      "max_active_phases": 1,
+      "max_attempts_per_phase": 2,
+      "max_replans": 1,
+      "first_failure_rotates": true,
+      "repeated_fingerprint_parks": true,
+      "requires_wave_one_vertical_slice": true,
+      "requires_typed_completion_receipt": true,
+      "ordinary_work_fallback": "direct_sol"
     },
     "fresh_verifier": {
       "automatic": true,

@@ -61,15 +61,6 @@ class ChildReceiptTests(unittest.TestCase):
         Draft202012Validator.check_schema(cls.schema)
         cls.schema_validator = Draft202012Validator(cls.schema)
 
-    def assertRejectedByBoth(self, payload: dict[str, object], pattern: str) -> None:
-        self.assertTrue(list(self.schema_validator.iter_errors(payload)))
-        with self.assertRaisesRegex(ChildReceiptError, pattern):
-            validate_child_receipt(
-                payload,
-                allowed_paths=("src/*.py", "tests/*.py"),
-                required_criteria=("criterion-1",),
-            )
-
     def test_valid_completion_receipt_passes(self) -> None:
         payload = valid_receipt()
 
@@ -86,7 +77,13 @@ class ChildReceiptTests(unittest.TestCase):
         payload = valid_receipt()
         payload["commands"] = []
 
-        self.assertRejectedByBoth(payload, "at least one command")
+        self.assertEqual(list(self.schema_validator.iter_errors(payload)), [])
+        with self.assertRaisesRegex(ChildReceiptError, "at least one command"):
+            validate_child_receipt(
+                payload,
+                allowed_paths=("src/*.py", "tests/*.py"),
+                required_criteria=("criterion-1",),
+            )
 
     def test_missing_acceptance_evidence_is_rejected(self) -> None:
         payload = valid_receipt()

@@ -8,9 +8,13 @@ from typing import Any
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 MODEL_OUTPUT_SCHEMA_NAMES = {
+    "child-completion.schema.json",
     "contract.schema.json",
     "final-review.schema.json",
     "implementation.schema.json",
+    "manager-child-completion.schema.json",
+    "manager-plan.schema.json",
+    "manager-verification.schema.json",
     "plan.schema.json",
     "review.schema.json",
 }

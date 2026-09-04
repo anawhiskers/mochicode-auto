@@ -9,8 +9,8 @@ First separate the two layers:
 
 For the local layer:
 
-- Use one writer per file or shared state. Preserve the direct-work default and use Sol for bounded planning and final judgment, Terra for acceptance and evidence review, and Luna for bounded implementation only when those roles are actually available.
-- Validate the resulting configuration and run the platform's supported status or configuration check. Report the backup, changed files, commands, exit codes, and anything still unknown. Do not restart the app automatically or claim success from a copied file alone.
+- Use one writer per file or shared state. Preserve direct Sol High as the substantive default. Use Luna only for sizable independent leaves with hard checks. Explicit Manager Mode uses a Sol manager plus one direct non-spawning Sol High implementer child, deterministic phase state, and independent parent verification. Keep automatic classification shadow-only until matched promotion. Terra remains optional only in experimental controller work.
+- Validate the resulting configuration and run the platform's supported status or configuration check. Report the backup, changed files, commands, exit codes, evidence, and anything still unknown. Do not restart the app automatically or claim success from a copied file alone.
 - Keep secrets, private paths, and computer-specific values out of portable files.
 
 A local installer cannot carry over login state, active sessions, plugin installation state, connector state, or browser permissions. Re-authenticate, reconnect, or install those items locally and verify each one separately. Account sync is not proof of local Codex capability.

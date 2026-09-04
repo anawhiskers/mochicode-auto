@@ -18,6 +18,7 @@ facts and rules that are not already covered there.
 - Direct Sol is a stock-quality passthrough. Preserve the user's original goal and repository instructions; add no ceremony, optional skill, worker, ledger, or critic without its concrete trigger.
 - Keep small or sequential work direct Sol. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, isolation, or batch volume; independence alone is insufficient. Escalate to Luna Max after failed acceptance or proven difficulty.
 - Fan out only frozen, disjoint leaves under a Sol parent. Start with two and use at most three live children per wave until larger waves earn promotion.
+- Use Manager Mode beta when explicitly requested for implementation. Sol manages one direct non-spawning Sol High child across phases; bounded state and independent parent verification rotate, park, resume, and permit one replan. Keep automatic classification shadow-only until matched promotion.
 - The deterministic controller is experimental and manual until its published promotion gates pass.
 
 ## Engineering rules
@@ -30,6 +31,7 @@ facts and rules that are not already covered there.
   paths, and evidence requirements.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
 - Maximum orchestration depth is one, primary Sol parent to child. Children do not spawn descendants.
+- The Manager Mode implementer is a direct child and cannot spawn descendants. If child creation fails before writing, continue direct Sol in the parent.
 - Eight active child threads is a host ceiling, not a target. Start with two and use no more than three live workers per wave until a larger wave is benchmark-promoted.
 - When observable risk warrants review, use one fresh evidence-bound read-only Sol High verifier, one Sol adjudication, at most one integrated repair, then rerun all checks and stop. Use three judges only for an explicit benchmark or a consequential multi-domain decision; preserve visual preference for human comparison.
 - For consequential interactive behavior, test applicable running, paused, re-entrant, edit-during-run, keyboard-focus, narrow-layout, and actual reduced-motion states.
