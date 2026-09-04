@@ -499,7 +499,14 @@ def run_command(
             base_staging_file.write(
                 "# MochiCode verifier base config intentionally contains no permissions.\n"
             )
-        os.replace(base_staging_path, sandbox_home / "config.toml")
+        for replace_attempt in range(3):
+            try:
+                os.replace(base_staging_path, sandbox_home / "config.toml")
+                break
+            except PermissionError:
+                if replace_attempt == 2:
+                    raise
+                time.sleep(0.02 * (replace_attempt + 1))
 
         candidate_temp_root = Path(
             tempfile.mkdtemp(prefix="mochicode-verifier-temp-", dir=sandbox_home)

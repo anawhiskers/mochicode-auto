@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.4, 2026-09-04
+
+- Added explicit Manager Mode beta plus deterministic shadow classification for automatic promotion while preserving direct Sol for ordinary tasks.
+- Added a deterministic 3-to-12-phase ledger with a wave-one vertical slice, one active phase, breadth-first rotation, two-attempt parking, repeated-fingerprint stopping, one replan, and stop/resume.
+- Added child and independent parent receipts, durable local evidence, tamper detection, sequential writer identity, and direct fallback when child creation fails before writing.
+- Updated the Codex, portable-agent, repository, and ChatGPT account instruction layers to use the same manager and implementer split.
+- Disabled multi-agent capability in the Manager implementer and documented which remaining tool and data limits are behavioral rather than OS isolation.
+- Bound Manager receipts to the exact role, model, effort, phase, thread, base revision, and result revision; added crash-recoverable state/evidence transactions.
+- Repaired the child output schema to the subset accepted by real Codex subagent output validation while retaining stricter deterministic Python checks.
+- Added a bounded retry for transient Windows contention when concurrent verifier sessions replace their shared safe base configuration.
+- Added a matched manager-mode benchmark record and kept automatic promotion in shadow because Manager Mode used 3.33 times total input and 1.48 times wall time without a demonstrated acceptance advantage.
+
 ## 0.1.3, 2026-09-02
 
 - Cut the automatic dispatcher by about half and kept ordinary substantive work on direct Sol High.

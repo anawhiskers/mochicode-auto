@@ -18,6 +18,16 @@ from .child_receipts import validate_child_receipt
 from .config import load_config
 from .evidence import EvidenceLedger
 from .learning import LearningStore
+from .manager_state import (
+    apply_manager_replan,
+    classify_manager_route,
+    finish_phase,
+    initialize_manager_run,
+    manager_status,
+    request_manager_stop,
+    resume_manager,
+    start_phase,
+)
 from .providers import CodexRoleProvider
 from .runner import MochiController, StubRoleProvider
 from .state import StateStore, exclusive_run_lease
@@ -107,6 +117,58 @@ def build_parser() -> argparse.ArgumentParser:
     receipt_validate.add_argument("--allowed-path", action="append", required=True)
     receipt_validate.add_argument("--criterion", action="append", required=True)
     receipt_validate.add_argument("--json", action="store_true", dest="as_json")
+
+    manager = subparsers.add_parser(
+        "manager",
+        help="Control a bounded long-project Manager Mode run.",
+    )
+    manager_actions = manager.add_subparsers(dest="manager_action", required=True)
+    manager_classify = manager_actions.add_parser(
+        "classify",
+        help="Classify explicit and automatic Manager Mode without starting work.",
+    )
+    manager_classify.add_argument("--facts", type=Path, required=True)
+    manager_classify.add_argument("--json", action="store_true", dest="as_json")
+    manager_init = manager_actions.add_parser("init", help="Create a bounded phase ledger.")
+    manager_init.add_argument("--run-root", type=Path, required=True)
+    manager_init.add_argument("--run-id", required=True)
+    manager_init.add_argument("--goal-hash", required=True)
+    manager_init.add_argument("--source-revision", required=True)
+    manager_init.add_argument("--decision-hash", required=True)
+    manager_init.add_argument("--activation-mode", choices=("explicit",), required=True)
+    manager_init.add_argument("--activation-criterion", action="append", required=True)
+    manager_init.add_argument("--plan", type=Path, required=True)
+    manager_init.add_argument("--json", action="store_true", dest="as_json")
+    manager_status_parser = manager_actions.add_parser("status", help="Inspect manager state.")
+    manager_status_parser.add_argument("--run-root", type=Path, required=True)
+    manager_status_parser.add_argument("--json", action="store_true", dest="as_json")
+    manager_start = manager_actions.add_parser("start", help="Start the next ready phase.")
+    manager_start.add_argument("--run-root", type=Path, required=True)
+    manager_start.add_argument("--phase", required=True)
+    manager_start.add_argument("--writer-id", required=True)
+    manager_start.add_argument("--thread-id", required=True)
+    manager_start.add_argument("--source-revision", required=True)
+    manager_start.add_argument("--json", action="store_true", dest="as_json")
+    manager_finish = manager_actions.add_parser("finish", help="Accept, rotate, or park a phase.")
+    manager_finish.add_argument("--run-root", type=Path, required=True)
+    manager_finish.add_argument("--phase", required=True)
+    manager_finish.add_argument("--result", choices=("accepted", "failed"), required=True)
+    manager_finish.add_argument("--receipt", type=Path)
+    manager_finish.add_argument("--verification", type=Path)
+    manager_finish.add_argument("--fingerprint")
+    manager_finish.add_argument("--current-revision")
+    manager_finish.add_argument("--json", action="store_true", dest="as_json")
+    manager_stop = manager_actions.add_parser("stop", help="Request a bounded manager stop.")
+    manager_stop.add_argument("--run-root", type=Path, required=True)
+    manager_stop.add_argument("--json", action="store_true", dest="as_json")
+    manager_resume = manager_actions.add_parser("resume", help="Resume a stopped manager run.")
+    manager_resume.add_argument("--run-root", type=Path, required=True)
+    manager_resume.add_argument("--json", action="store_true", dest="as_json")
+    manager_replan = manager_actions.add_parser("replan", help="Use the one bounded replan.")
+    manager_replan.add_argument("--run-root", type=Path, required=True)
+    manager_replan.add_argument("--plan", type=Path, required=True)
+    manager_replan.add_argument("--decision-hash", required=True)
+    manager_replan.add_argument("--json", action="store_true", dest="as_json")
     return parser
 
 
@@ -261,6 +323,57 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
                 "receipt": str(receipt_path),
             }
             _emit(result, args.as_json)
+            return 0
+        if args.command == "manager":
+            if args.manager_action == "classify":
+                facts = json.loads(Path(args.facts).read_text(encoding="utf-8"))
+                _emit_manager(classify_manager_route(facts), args.as_json)
+                return 0
+            if args.manager_action == "init":
+                plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+                initialize_manager_run(
+                    args.run_root,
+                    run_id=args.run_id,
+                    goal_hash=args.goal_hash,
+                    source_revision=args.source_revision,
+                    decision_hash=args.decision_hash,
+                    activation={
+                        "mode": args.activation_mode,
+                        "criteria": list(args.activation_criterion),
+                    },
+                    plan=plan,
+                )
+            elif args.manager_action == "start":
+                start_phase(
+                    args.run_root,
+                    args.phase,
+                    writer_id=args.writer_id,
+                    implementer_thread_id=args.thread_id,
+                    source_revision=args.source_revision,
+                )
+            elif args.manager_action == "finish":
+                finish_phase(
+                    args.run_root,
+                    args.phase,
+                    result=args.result,
+                    receipt_path=args.receipt,
+                    verification_path=args.verification,
+                    fingerprint=args.fingerprint,
+                    current_revision=args.current_revision,
+                )
+            elif args.manager_action == "stop":
+                request_manager_stop(args.run_root)
+            elif args.manager_action == "resume":
+                resume_manager(args.run_root)
+            elif args.manager_action == "replan":
+                plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+                apply_manager_replan(
+                    args.run_root,
+                    plan,
+                    decision_hash=args.decision_hash,
+                )
+            payload = manager_status(args.run_root)
+            _emit_manager(payload, args.as_json)
             return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
         print(f"MochiCode refused: {error}", file=sys.stderr)
@@ -546,6 +659,18 @@ def _emit(payload: dict[str, Any], as_json: bool) -> None:
         print(f"Review state: {payload['run_root']}")
     if payload.get("integration_branch"):
         print(f"Integration branch: {payload['integration_branch']}")
+
+
+def _emit_manager(payload: dict[str, Any], as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+    if "route" in payload:
+        print(f"Manager route: {payload['route']}")
+        return
+    print(f"Manager {payload['status']}.")
+    print(f"Current phase: {payload['current_phase'] or 'none'}")
+    print(f"Next phase: {payload['next_phase'] or 'none'}")
 
 
 def _default_state_root() -> Path:

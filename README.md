@@ -25,12 +25,34 @@ two or more frozen, disjoint leaves with a concrete expected critical-path savin
 
 observable risk or quality gate -> one fresh evidence-bound Sol verifier -> one adjudication -> at most one repair
 
+explicit Manager Mode implementation request
+  -> Sol manager plus one direct non-spawning Sol High child
+  -> independent parent verification, rotation, parking, stop/resume, and one replan
+
+qualifying automatic candidate -> shadow classification only until matched promotion
+
 experimental controller -> explicit selection only after promotion gates pass
 ```
 
 Native work has one writer per file or shared state. Delegation depth is one, primary Sol parent to child, and children cannot delegate. Automatic fan-out starts with two and never exceeds three live workers; eight is only a host ceiling.
 
 Delegated implementation leaves use a typed JSON completion receipt. The bundled validator rejects missing acceptance evidence, unowned or unsafe paths, contradictory command exits, truncation markers, and fake `COMPLETED` claims. One malformed receipt gets one format-only correction attempt. This makes handoffs inspectable, but it does not replace parent verification or a risk-triggered fresh verifier.
+
+## Manager Mode
+
+Write `[MOCHICODE_MANAGER]` or ask to execute in Manager Mode to force the beta. Mentioning it in research, review, or planning does not activate it. Automatic classification is shadow-only until matched promotion. A qualifying candidate requires implementation, 3 to 6 phases, a wave-one runnable slice, at least 6 production files across 2 components, complete phase and final oracles, frozen decisions, one sequential writer, confirmed child controls, no proven fan-out advantage, and no need for the heavier controller.
+
+The Sol manager owns direction and does not edit production code while exactly one direct `mochicode_manager_implementer` Sol High child owns all phases sequentially. Its custom agent disables multi-agent capability so it cannot spawn. Other memory, browser, and unrelated-path limits remain behavioral instructions backed by parent evidence checks, not OS isolation. The crash-recoverable local ledger keeps 3 to 12 explicit phases outside the repository, selects one breadth-first phase, binds child receipts to the exact phase, thread, and revisions, requires independent parent verification, rotates after one failure, parks after two attempts or a repeated fingerprint, supports stop/resume, and permits one replan. Child failure before writing falls back to direct Sol.
+
+In the [September 4 matched benchmark](docs/MANAGER-MODE-BENCHMARK-20260904.md), one blind AI judge preferred Manager Mode 9.0 to 8.4, but it used 3.33 times total input and 1.48 times wall time. It therefore remains explicit-only while automatic candidates are logged in shadow.
+
+```powershell
+python scripts\mochicode.py manager classify --facts C:\path\to\manager-facts.json --json
+python scripts\mochicode.py manager init --run-root C:\path\to\state --run-id project-manager --goal-hash SHA256 --source-revision GIT_SHA --decision-hash SHA256 --activation-mode explicit --activation-criterion explicit_manager_request --plan C:\path\to\manager-plan.json --json
+python scripts\mochicode.py manager status --run-root C:\path\to\state --json
+python scripts\mochicode.py manager stop --run-root C:\path\to\state
+python scripts\mochicode.py manager resume --run-root C:\path\to\state
+```
 
 ## What the measurements showed
 
@@ -178,6 +200,6 @@ Private Google Drive package sync uses the boundary described in [docs/CLOUD-SYN
 
 ## Status
 
-Version `0.1.3` is an experimental beta. Direct Sol, bounded native workers, typed child receipts, and selective verification are usable. The deterministic controller remains opt-in and unpromoted.
+Version `0.1.4` is an experimental beta. Direct Sol, bounded workers, explicit Manager Mode, typed receipts, and selective verification are usable. Automatic Manager selection remains shadow-only until the representative matched benchmark gates pass. The heavier controller remains opt-in and unpromoted.
 
 Licensed under the [MIT License](LICENSE).

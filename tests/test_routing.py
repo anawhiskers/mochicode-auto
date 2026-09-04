@@ -24,6 +24,7 @@ class RoutingContractTests(unittest.TestCase):
         self.assertIn("**Direct Sol**", self.skill_text)
         self.assertIn("**Bounded Luna Medium worker**", self.skill_text)
         self.assertIn("**Bounded Sol-led fan-out**", self.skill_text)
+        self.assertIn("**Bounded Manager Mode beta**", self.skill_text)
         self.assertIn("**Experimental controller**", self.skill_text)
         self.assertIn("The user supplies only the real goal once", self.skill_text)
 
@@ -52,6 +53,14 @@ class RoutingContractTests(unittest.TestCase):
         self.assertEqual(routing["fresh_verifier"]["max_repairs"], 1)
         self.assertTrue(routing["fresh_verifier"]["read_only"])
         self.assertTrue(routing["fresh_verifier"]["evidence_bound"])
+        manager = routing["manager_mode"]
+        self.assertFalse(manager["automatic_selection"])
+        self.assertTrue(manager["automatic_shadow_classification"])
+        self.assertEqual(manager["preferred_implementer"], "direct_non_spawning_sol_high_child")
+        self.assertEqual(manager["max_automatic_phases"], 6)
+        self.assertEqual(manager["max_attempts_per_phase"], 2)
+        self.assertEqual(manager["max_replans"], 1)
+        self.assertTrue(manager["requires_typed_completion_receipt"])
         self.assertFalse(routing["deterministic_controller"]["automatic_selection"])
 
     def test_portable_limits_match_the_machine_contract(self) -> None:
@@ -135,6 +144,7 @@ class RoutingContractTests(unittest.TestCase):
         self.assertLess(len(self.skill_text.encode("utf-8")), 9000)
         for reference in (
             "references/workflow.md",
+            "references/manager-mode.md",
             "references/safety.md",
             "references/commands.md",
             "references/skill-system.md",
@@ -150,6 +160,17 @@ class RoutingContractTests(unittest.TestCase):
         self.assertIn("After two matching failures, change method", self.skill_text)
         self.assertIn("Do not emit repeated waiting updates", self.skill_text)
         self.assertIn("role, model, effort, owned paths", self.skill_text)
+
+    def test_manager_mode_is_bounded_and_does_not_create_grandchildren(self) -> None:
+        manager = (
+            PLUGIN_ROOT / "skills" / "mochicode-auto" / "references" / "manager-mode.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("exactly one direct `mochicode_manager_implementer` Sol High child", manager)
+        self.assertIn("never spawns descendants", manager)
+        self.assertIn("Automatic classification stays shadow-only", self.skill_text)
+        self.assertIn("independently rerun", manager)
+        self.assertIn("manager-verification.schema.json", manager)
+        self.assertNotIn("separate top-level", manager)
 
 
 if __name__ == "__main__":

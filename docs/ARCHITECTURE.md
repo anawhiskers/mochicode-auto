@@ -13,6 +13,11 @@ ordinary Codex prompt
         |
         +-- frozen disjoint leaves + predicted saving -> Sol-led two-to-three-worker fan-out
         |
+        +-- explicit Manager Mode implementation -> bounded Manager Mode beta
+        |       +-- Sol manager: goal, phase order, one replan, final judgment
+        |       +-- one direct non-spawning Sol High child: sequential phase implementation
+        |       `-- manager ledger: child + parent receipts, rotate, park, stop, resume
+        |
         `-- explicit experimental controller only
                 |
                 +-- Sol Max: binding product/architecture plan with wave-one vertical slice
@@ -25,9 +30,11 @@ ordinary Codex prompt
                 `-- Sol: final review bound to the reverified integration identity
 ```
 
-MochiCode Auto owns route selection automatically from the user's goal. The deterministic controller is unpromoted and never entered automatically.
+MochiCode Auto owns route selection automatically from the user's goal. Manager Mode beta activates explicitly; automatic candidates are classified in shadow until matched promotion. The heavier deterministic controller is unpromoted and never entered automatically.
 
 Native orchestration depth is one, primary Sol parent to child. Children do not delegate. Eight active children is a host ceiling, while automatic waves start with two and cap at three until larger waves earn benchmark promotion. The installed runtime is capability-probed before unsupported global agent defaults are written.
+
+Manager Mode uses one direct non-spawning Sol High child across sequential phases. If child creation fails before writing, ownership stays with direct Sol in the parent. Its lightweight state contains no raw goal or transcript, only hashes and bounded phase, writer, revision, receipt, usage, and status metadata.
 
 ## Release boundary
 
