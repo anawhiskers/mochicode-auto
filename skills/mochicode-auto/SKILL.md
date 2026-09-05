@@ -18,7 +18,7 @@ MochiCode Auto is the only automatic top-level workflow. The user supplies only 
 
 Direct selected authority is a stock-quality passthrough, not another mandatory itinerary. Do not add planning files, workers, critics, skill calls, or ledgers just because this skill loaded. A skill cannot change the running model. Never report Luna work without a real child receipt.
 
-`[MOCHICODE_CHILD]` does only its assignment and never spawns descendants or starts this workflow.
+`[MOCHICODE_CHILD]` does only its assignment, never invokes this workflow, and never spawns descendants.
 
 ## Authority and boundaries
 
@@ -30,7 +30,7 @@ One writer owns each path or shared state. Children must never spawn descendants
 - Manager implementer: `schemas/manager-child-completion.schema.json`
 - Experimental controller: `schemas/implementation.schema.json`
 
-Give children only the goal, owned paths, frozen decisions, checks, and required evidence. Record role, model, effort, owned paths, result, and available usage. Permit one format-only receipt correction, then fail closed as partial or failed. Receipts do not replace independent verification. Name new tasks `[ROLE | MODEL | EFFORT] objective` when supported; do not rename existing user tasks.
+Give children only the goal, owned paths, frozen decisions, checks, and required evidence. Record each real child role, model, effort, owned paths, result, and available usage. Permit one format-only receipt correction, then fail closed as partial or failed. Receipts do not replace independent verification. Name new tasks `[ROLE | MODEL | EFFORT] concise objective` when supported; do not rename existing user tasks.
 
 ## Read and verify proportionately
 
@@ -51,5 +51,7 @@ Read [targeted improvement](references/targeted-improvement.md) for repeated imp
 For substantive Astra work involving model behavior, routing, or verification, read [Astra mode](references/astra-mode.md) once and reuse it while unchanged. Session identity proves the running model; catalog omission does not disprove it. Only a new installation choice requires capability confirmation.
 
 Keep compact verified state only for interruption-prone work or explicit Manager Mode. Store only bounded verified failure mechanisms, never raw prompts, logs, diffs, secrets, or guesses as lessons. Candidate lessons stay inactive until positive recurrence and a successful negative-control task. Read [skill-system policy](references/skill-system.md) when auditing, installing, retiring, or restoring skills. Never automatically retire capabilities or override memory/privacy authority.
+
+Registry: `config/skill-dispositions.json`. No other skill may start a competing top-level loop.
 
 Report material changed paths, checks and outcomes, real model/worker evidence, available usage, and remaining uncertainty. Missing telemetry is unknown, not savings. Preserve confirmation gates. Never auto-merge controller integration into the user's source branch.

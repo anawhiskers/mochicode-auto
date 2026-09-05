@@ -1,6 +1,6 @@
 {
   "name": "mochicode-auto",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Preserve the selected authority for normal work, add justified bounded workers or evidence gates, and use Manager Mode only for an explicit Manager Mode implementation request.",
   "author": {
     "name": "Ana Stephens"

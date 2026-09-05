@@ -1,4 +1,4 @@
-# v0.1.5: Astra instruction and configuration cleanup
+# v0.1.6: Astra instruction and configuration cleanup
 
 This release combines the Astra adaptation, Manager/configuration audit,
 bounded recovery, and instruction-hygiene work completed on September 4-5, 2026.

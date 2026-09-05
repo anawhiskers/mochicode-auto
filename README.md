@@ -4,7 +4,7 @@ MochiCode Auto is an evidence-driven workflow router for Codex on Windows. You g
 
 The main lesson from the benchmark work is simple: **more agents are not automatically better**. Direct GPT-5.6 Sol High was often faster, cheaper, and better than elaborate orchestration. MochiCode therefore preserves direct Sol behavior by default and adds bounded workers only when the task divides cleanly.
 
-GPT-6 Astra is supported as a direct authority when selected by the user. Preserve its selected effort, keep substantive work direct, and delegate only justified independent work. Installing MochiCode does not replace an existing model preference. Sol High is a fallback for a fresh configuration, not an override of Astra. See [v0.1.5 changes and evidence](docs/ASTRA-HYGIENE-20260905.md).
+GPT-6 Astra is supported as a direct authority when selected by the user. Preserve its selected effort, keep substantive work direct, and delegate only justified independent work. Installing MochiCode does not replace an existing model preference. Sol High is a fallback for a fresh configuration, not an override of Astra. See [v0.1.6 changes and evidence](docs/ASTRA-HYGIENE-20260905.md).
 
 ## Current routing
 
@@ -99,7 +99,7 @@ MochiCode does not require an API key and does not add an MCP server. It does no
 ### From Git
 
 ```powershell
-git clone --branch v0.1.5 --depth 1 https://github.com/anawhiskers/mochicode-auto.git
+git clone --branch v0.1.6 --depth 1 https://github.com/anawhiskers/mochicode-auto.git
 cd mochicode-auto
 pwsh -NoProfile -File .\install.ps1 -ConfirmInstall
 ```
@@ -225,6 +225,6 @@ Private Google Drive package sync uses the boundary described in [docs/CLOUD-SYN
 
 ## Status
 
-Version `0.1.5` is an experimental beta. Direct Sol, bounded workers, explicit Manager Mode, typed receipts, and selective verification are usable. Automatic Astra default promotion remains unproven by matched tests. An earlier local catalog snapshot omitted Astra; that historical omission does not disprove a currently running Astra session. Automatic Manager selection and the heavier controller remain unpromoted.
+Version `0.1.6` is an experimental beta. Direct Sol, bounded workers, explicit Manager Mode, typed receipts, and selective verification are usable. Automatic Astra default promotion remains unproven by matched tests. An earlier local catalog snapshot omitted Astra; that historical omission does not disprove a currently running Astra session. Automatic Manager selection and the heavier controller remain unpromoted.
 
 Licensed under the [MIT License](LICENSE).

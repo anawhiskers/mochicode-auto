@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.5, 2026-09-05
+## 0.1.6, 2026-09-05
+
+- Corrected stale routing assertions caught by exact-tag CI and restored the explicit skill-disposition reference and label wording. The v0.1.5 tag is retained as a failed release candidate; validation blocked its downloadable release.
 
 - Added selected-parent Astra support, lighter task-specific instructions, and bounded recovery without changing existing model preferences.
 - Added opt-in experimental context management with backup, configuration-preservation checks, a Windows exclusive file lock, and running-app refusal.

@@ -1,6 +1,6 @@
 # Install this release on another computer
 
-Use the v0.1.5 release ZIP, not a copied personal config directory. Official
+Use the v0.1.6 release ZIP, not a copied personal config directory. Official
 release assets are built by GitHub Actions from the tag after validation.
 
 On Windows, use PowerShell 7, Python 3.13+, Git, Codex CLI, and local ChatGPT
@@ -10,8 +10,8 @@ Other agents/platforms use the documented portable policy adapter as supported.
 Download into a new local directory:
 
 ```powershell
-gh release download v0.1.5 --repo anawhiskers/mochicode-auto --pattern 'MochiCode-Auto-0.1.5.zip'
-gh attestation verify .\MochiCode-Auto-0.1.5.zip --repo anawhiskers/mochicode-auto
+gh release download v0.1.6 --repo anawhiskers/mochicode-auto --pattern 'MochiCode-Auto-0.1.6.zip'
+gh attestation verify .\MochiCode-Auto-0.1.6.zip --repo anawhiskers/mochicode-auto
 ```
 
 If provenance verification fails, stop installation rather than bypassing it.
