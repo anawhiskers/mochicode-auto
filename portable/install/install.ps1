@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$UserHome = $env:USERPROFILE,
@@ -5,7 +6,8 @@ param(
     [switch]$UpdateExisting,
     [switch]$SkipPluginCommand,
     [bool]$DirectFirst = $false,
-    [bool]$TerraFirst = $false
+    [bool]$TerraFirst = $false,
+    [bool]$AstraFirst = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,6 +73,9 @@ if ($DirectFirst) {
 }
 if ($TerraFirst) {
     $installerParameters.TerraFirst = $true
+}
+if ($AstraFirst) {
+    $installerParameters.AstraFirst = $true
 }
 
 & $pluginInstaller @installerParameters

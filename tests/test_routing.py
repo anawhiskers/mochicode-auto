@@ -21,9 +21,9 @@ class RoutingContractTests(unittest.TestCase):
     def test_skill_exposes_direct_first_routes_and_single_top_level_workflow(self) -> None:
         self.assertIn("MochiCode Auto is the only automatic top-level workflow", self.skill_text)
         self.assertIn("**Direct current parent**", self.skill_text)
-        self.assertIn("**Direct Sol**", self.skill_text)
+        self.assertIn("**Direct selected authority**", self.skill_text)
         self.assertIn("**Bounded Luna Medium worker**", self.skill_text)
-        self.assertIn("**Bounded Sol-led fan-out**", self.skill_text)
+        self.assertIn("**Bounded authority-led fan-out**", self.skill_text)
         self.assertIn("**Bounded Manager Mode beta**", self.skill_text)
         self.assertIn("**Experimental controller**", self.skill_text)
         self.assertIn("The user supplies only the real goal once", self.skill_text)
@@ -44,6 +44,13 @@ class RoutingContractTests(unittest.TestCase):
         self.assertTrue(routing["automatic"])
         self.assertEqual(routing["user_input_required"], "goal_only")
         self.assertEqual(routing["direct_sol"]["model"], "gpt-5.6-sol")
+        astra = routing["astra_candidate"]
+        self.assertEqual(astra["model"], "gpt-6-astra")
+        self.assertEqual(astra["activation_status"], "capability_gated_unbenchmarked")
+        self.assertFalse(astra["automatic_default"])
+        self.assertTrue(astra["requires_live_catalog"])
+        self.assertEqual(astra["unavailable_fallback"], "direct_sol")
+        self.assertIn("matched_direct_sol_comparison", astra["promotion_requires"])
         self.assertEqual(routing["luna_medium_worker"]["reasoning_effort"], "medium")
         self.assertTrue(routing["luna_medium_worker"]["requires_real_child_receipt"])
         self.assertEqual(routing["luna_medium_worker"]["small_sequential_fallback"], "direct_sol")
@@ -111,8 +118,8 @@ class RoutingContractTests(unittest.TestCase):
         )
 
     def test_core_role_split_is_direct_first_and_quality_gated(self) -> None:
-        self.assertIn("Sol is the substantive parent", self.skill_text)
-        self.assertIn("Direct Sol is a stock-quality passthrough", self.skill_text)
+        self.assertIn("current selected authority is the substantive parent", self.skill_text)
+        self.assertIn("Direct selected authority is a stock-quality passthrough", self.skill_text)
         self.assertIn("Preserve the user's original goal", self.skill_text)
         self.assertIn("Bounded Luna Medium worker", self.skill_text)
         self.assertIn("Luna Max only after failed acceptance", self.skill_text)
@@ -128,8 +135,8 @@ class RoutingContractTests(unittest.TestCase):
             "motion",
         ):
             self.assertIn(decision_area, self.skill_text)
-        self.assertIn("Use High normally", self.skill_text)
-        self.assertIn("human judgment", self.skill_text)
+        self.assertIn("Preserve the running parent and selected effort", self.skill_text)
+        self.assertIn("human judgment", self.skill_text.lower())
         self.assertIn("AI-slop", self.skill_text)
         self.assertIn("cannot redesign the product", self.skill_text)
 
@@ -144,6 +151,7 @@ class RoutingContractTests(unittest.TestCase):
         self.assertLess(len(self.skill_text.encode("utf-8")), 9000)
         for reference in (
             "references/workflow.md",
+            "references/astra-mode.md",
             "references/manager-mode.md",
             "references/safety.md",
             "references/commands.md",
@@ -152,6 +160,19 @@ class RoutingContractTests(unittest.TestCase):
             self.assertIn(reference, self.skill_text)
         self.assertNotIn("baseline_argv", self.skill_text)
         self.assertNotIn("expected_failure_codes", self.skill_text)
+
+    def test_astra_guidance_is_progressive_capability_gated_and_direct_first(self) -> None:
+        astra = (
+            PLUGIN_ROOT / "skills" / "mochicode-auto" / "references" / "astra-mode.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("installed Codex catalog must list that exact model", astra)
+        self.assertIn("Keep substantial, coupled, visual", astra)
+        self.assertIn("does not automatically add Manager Mode", astra)
+        self.assertIn("catalog omission does not disprove it", astra)
+        self.assertIn("Ultra is exceptional but permitted when that host advertises it", astra)
+        self.assertNotIn("Astra does not support Ultra", astra)
+        self.assertIn("Use them only when the active runtime advertises them", astra)
+        self.assertIn("matched task against the current direct Sol route", astra)
 
     def test_skill_prevents_false_blocks_and_empty_progress(self) -> None:
         self.assertIn("future human test is readiness work, not a blocker", self.skill_text)
@@ -166,11 +187,69 @@ class RoutingContractTests(unittest.TestCase):
             PLUGIN_ROOT / "skills" / "mochicode-auto" / "references" / "manager-mode.md"
         ).read_text(encoding="utf-8")
         self.assertIn("exactly one direct `mochicode_manager_implementer` Sol High child", manager)
-        self.assertIn("never spawns descendants", manager)
+        self.assertIn("must never spawn descendants", manager)
+        self.assertIn("Configuration alone is not runtime proof", manager)
         self.assertIn("Automatic classification stays shadow-only", self.skill_text)
         self.assertIn("independently rerun", manager)
         self.assertIn("manager-verification.schema.json", manager)
         self.assertNotIn("separate top-level", manager)
+
+    def test_receipt_instructions_select_the_route_specific_schema(self) -> None:
+        workflow = (PLUGIN_ROOT / "skills/mochicode-auto/references/workflow.md").read_text(encoding="utf-8")
+        expected = {
+            "native leaf": "child-completion.schema.json",
+            "manager implementer": "manager-child-completion.schema.json",
+            "experimental controller": "implementation.schema.json",
+        }
+        for document in (self.skill_text, workflow):
+            for route, schema in expected.items():
+                with self.subTest(route=route, document=document[:30]):
+                    self.assertRegex(document.lower(), rf"{route}(?::| uses) `schemas/{schema.replace('.', '[.]')}`")
+                    self.assertTrue((PLUGIN_ROOT / "schemas" / schema).is_file())
+
+    def test_published_manager_trigger_and_authority_are_consistent(self) -> None:
+        paths = (
+            "README.md", "docs/BRIEF.md", "docs/ARCHITECTURE.md",
+            "portable/docs/MOCHICODE-HYBRID-ROUTING.md",
+            "portable/templates/repository/AGENTS.md",
+            "skills/mochicode-auto/references/manager-mode.md",
+            ".codex-plugin/plugin.json", "install.ps1",
+        )
+        for path in paths:
+            text = (PLUGIN_ROOT / path).read_text(encoding="utf-8")
+            if path == "install.ps1":
+                text = text.split("$block = @(", 1)[1].split(") -join $lineEnding", 1)[0]
+            with self.subTest(path=path):
+                self.assertIn("explicit Manager Mode implementation request", text)
+                self.assertNotIn("Sol adjudicates once", text)
+                self.assertNotIn("one Sol adjudication", text)
+                self.assertNotIn("after Sol proves", text)
+        metadata = json.loads((PLUGIN_ROOT / ".codex-plugin/plugin.json").read_text(encoding="utf-8"))
+        self.assertIn("shadow-only", metadata["interface"]["longDescription"])
+
+    def test_source_adapter_instructions_do_not_use_package_wrapper(self) -> None:
+        for path in ("README.md", "portable/docs/MULTI-AGENT-PORTABILITY.md"):
+            text = (PLUGIN_ROOT / path).read_text(encoding="utf-8")
+            with self.subTest(path=path):
+                self.assertIn("python -B .\\scripts\\agent_adapter.py audit --agent", text)
+                self.assertIn("python -B .\\scripts\\agent_adapter.py apply --agent", text)
+                self.assertIn("extracted verified release package", text)
+                self.assertNotRegex(text, r"(?m)^pwsh .*agent-sync[.]ps1")
+
+    def test_native_guarantees_are_qualified_in_policy_surfaces(self) -> None:
+        for path in (
+            "README.md", "docs/ARCHITECTURE.md",
+            "skills/mochicode-auto/SKILL.md",
+            "skills/mochicode-auto/references/workflow.md",
+            "skills/mochicode-auto/references/safety.md",
+            "portable/templates/repository/AGENTS.md",
+            "portable/docs/MOCHICODE-HYBRID-ROUTING.md",
+        ):
+            text = (PLUGIN_ROOT / path).read_text(encoding="utf-8")
+            with self.subTest(path=path):
+                self.assertIn("behavioral instructions", text)
+                self.assertNotIn("children cannot delegate", text)
+                self.assertNotIn("child cannot spawn descendants", text)
 
 
 if __name__ == "__main__":

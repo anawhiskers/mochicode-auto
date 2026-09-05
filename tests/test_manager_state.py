@@ -16,6 +16,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
 
 from mochicode_core.evidence import EvidenceLedger
+import mochicode_core.manager_state as manager_module
 from mochicode_core.manager_state import (
     ManagerStateError,
     apply_manager_replan,
@@ -433,6 +434,10 @@ class ManagerStateTests(unittest.TestCase):
                 self.assertRegex(phase["child_receipt_hash"], r"^[0-9a-f]{64}$")
                 self.assertRegex(phase["verification_receipt_hash"], r"^[0-9a-f]{64}$")
             self.assertEqual(state["usage"]["child_count"], 1)
+            self.assertEqual(request_manager_stop(root)["status"], "complete")
+            self.assertEqual(load_manager_state(root)["status"], "complete")
+            with self.assertRaisesRegex(ManagerStateError, "only a stopped"):
+                resume_manager(root)
 
     def test_child_receipt_cannot_replace_independent_parent_verification(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -519,6 +524,89 @@ class ManagerStateTests(unittest.TestCase):
                 self.assertFalse((root / ".manager-transaction.json").exists())
                 self.assertTrue(EvidenceLedger(root / "manager-evidence.jsonl").verify()[0])
 
+    def test_stop_during_active_phase_preserves_pause_after_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / "manager"
+            initialize(root, run_id="stop-active")
+            start_phase(root, "vertical", writer_id="writer", implementer_thread_id="child", source_revision=BASE_REVISION)
+            request_manager_stop(root)
+            state = finish_phase(root, "vertical", result="failed", fingerprint="c" * 64, current_revision=BASE_REVISION)
+            self.assertEqual(state["status"], "stopped")
+            self.assertTrue(state["stop_requested"])
+            self.assertIsNone(manager_status(root)["next_phase"])
+            state = resume_manager(root)
+            self.assertEqual(state["status"], "active")
+            self.assertEqual(next_ready_phase(state)["id"], "support")
+
+    def test_resume_exhausted_queue_does_not_create_an_empty_active_run(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / "manager"
+            value = plan()
+            value["phases"][1]["dependencies"] = ["vertical"]
+            initialize(root, run_id="stop-exhausted", value=value)
+            for attempt in range(2):
+                start_phase(root, "vertical", writer_id="writer", implementer_thread_id="child", source_revision=BASE_REVISION)
+                finish_phase(root, "vertical", result="failed", fingerprint="c" * 64, current_revision=BASE_REVISION)
+            self.assertEqual(manager_status(root)["status"], "needs_replan")
+            request_manager_stop(root)
+            self.assertEqual(resume_manager(root)["status"], "needs_replan")
+
+    def test_stored_receipt_mutation_or_deletion_invalidates_resume(self) -> None:
+        for action in ("modify", "delete"):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw) / "manager"
+                initialize(root, run_id="receipt-drift")
+                start_phase(root, "vertical", writer_id="writer", implementer_thread_id="manager-child", source_revision=BASE_REVISION)
+                state = finish_phase(
+                    root, "vertical", result="accepted",
+                    receipt_path=receipt(Path(raw) / "child.json", "vertical", "vertical works", "src/vertical.py"),
+                    verification_path=verification(Path(raw) / "parent.json", "vertical", "vertical works", "src/vertical.py", base_revision=BASE_REVISION, verified_revision=SECOND_REVISION),
+                )
+                saved = root / state["phases"][0]["child_receipt_path"]
+                if action == "modify":
+                    saved.write_bytes(saved.read_bytes() + b" ")
+                else:
+                    saved.unlink()
+                with self.assertRaises(ManagerStateError):
+                    load_manager_state(root)
+
+    def test_acceptance_archives_the_exact_validated_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / "manager"
+            initialize(root, run_id="receipt-snapshot")
+            start_phase(root, "vertical", writer_id="writer", implementer_thread_id="manager-child", source_revision=BASE_REVISION)
+            child = receipt(Path(raw) / "child.json", "vertical", "vertical works", "src/vertical.py")
+            original = child.read_bytes()
+            parent = verification(Path(raw) / "parent.json", "vertical", "vertical works", "src/vertical.py", base_revision=BASE_REVISION, verified_revision=SECOND_REVISION)
+            real_validate = manager_module._validate_manager_child_receipt
+
+            def change_after_validation(*args, **kwargs):
+                real_validate(*args, **kwargs)
+                child.write_text('{"status":"FAILED"}', encoding="utf-8")
+
+            with patch.object(manager_module, "_validate_manager_child_receipt", side_effect=change_after_validation):
+                state = finish_phase(root, "vertical", result="accepted", receipt_path=child, verification_path=parent)
+            stored = root / state["phases"][0]["child_receipt_path"]
+            self.assertEqual(stored.read_bytes(), original)
+            self.assertEqual(load_manager_state(root)["phases"][0]["status"], "accepted")
+
+    def test_pending_transaction_cannot_be_replayed_onto_newer_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / "manager"
+            initialize(root, run_id="stale-transaction")
+            with patch("mochicode_core.manager_state._append_event_atomic", side_effect=OSError("interruption")):
+                with self.assertRaises(OSError):
+                    request_manager_stop(root)
+            pending = root / ".manager-transaction.json"
+            old = pending.read_bytes()
+            self.assertEqual(load_manager_state(root)["status"], "stopped")
+            resume_manager(root)
+            pending.write_bytes(old)
+            before = (root / "manager-state.json").read_bytes()
+            with self.assertRaises(ManagerStateError):
+                load_manager_state(root)
+            self.assertEqual((root / "manager-state.json").read_bytes(), before)
+
     def test_invalid_overlap_cycle_and_state_tampering_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
@@ -549,6 +637,14 @@ class ManagerStateTests(unittest.TestCase):
             state_path.write_text(json.dumps(value), encoding="utf-8")
             with self.assertRaisesRegex(ManagerStateError, "latest evidence"):
                 load_manager_state(manager_root)
+
+    def test_plan_rejects_ambiguous_and_windows_stream_paths(self) -> None:
+        for unsafe in (".", "./src/a.py", "src//a.py", "src/a.py:stream", "src/../a.py", "src/\x00a.py"):
+            with self.subTest(path=unsafe), tempfile.TemporaryDirectory() as raw:
+                value = plan()
+                value["phases"][0]["owned_paths"] = [unsafe]
+                with self.assertRaisesRegex(ManagerStateError, "unsafe"):
+                    initialize(Path(raw) / "manager", run_id="unsafe-path", value=value)
 
     def test_cli_exposes_the_complete_manager_control_surface(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

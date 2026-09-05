@@ -202,9 +202,10 @@ class RoleCatalogTests(unittest.TestCase):
 
         self.assertIn("repository-workflow-upgrader", upgrader)
         self.assertIn("repository-workflow-upgrader", template)
-        self.assertIn("Every repository-workflow migration that writes files", upgrader)
-        self.assertIn("Terra defines the migration contract", upgrader)
-        self.assertIn("bounded Luna worktree", upgrader)
+        self.assertIn("direct authority parent owns repository-workflow migrations", upgrader)
+        self.assertIn("Preserve the selected authority and effort", upgrader)
+        self.assertIn("current session identity does not require catalog reconfirmation", upgrader)
+        self.assertIn("deterministic controller remains an explicit unpromoted experiment", upgrader)
         for text in (upgrader, template):
             with self.subTest(document="upgrader" if text == upgrader else "template"):
                 self.assertIn("one writer", text)

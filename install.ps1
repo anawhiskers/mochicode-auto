@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$Source = $PSScriptRoot,
@@ -13,6 +14,7 @@ param(
     [switch]$RemoveStaleContext,
     [switch]$DirectFirst,
     [switch]$TerraFirst,
+    [switch]$AstraFirst,
     [Alias('RoutingCanaryReceipt', 'FreshTaskCanaryReceipt')]
     [string]$CanaryReceipt
 )
@@ -509,6 +511,7 @@ function Write-Manifest {
             remove_stale_context = [bool]$RemoveStaleContext
             direct_first = [bool]$DirectFirst
             terra_first = [bool]$TerraFirst
+            astra_first = [bool]$AstraFirst
         }
         confirm_install = [bool]$ConfirmInstall
         stale_mcp_changes = $staleMcpChanges
@@ -687,13 +690,13 @@ function Set-MochiCodeMarkerBlock {
         $Begin
         '## Automatic model and agent routing'
         ''
-        '- MochiCode Auto is the only automatic top-level project workflow. Keep conversation and tiny actions direct. Use stock-quality direct Sol High for substantive, coupled, architectural, product, UI/UX, visual, debugging, integration, and sequential work.'
+        '- MochiCode Auto is the only automatic top-level project workflow. Keep conversation and tiny actions direct. Preserve the current selected authority and effort for substantive, coupled, architectural, product, UI/UX, visual, debugging, integration, and sequential work. Sol High is a fallback, not an override of the selected model.'
+        '- Preserve the selected parent and effort, including Astra. Load its model reference only when relevant; a model release does not authorize preference changes. Current session identity proves the running model.'
         '- Add no planning file, worker, critic, optional process skill, or ledger unless its concrete trigger is observable. A bounded acceptance brief is same-context only and never a separate planning call.'
         '- Use a real Luna Medium child only for a sizable frozen independent leaf with hard checks and a concrete expected saving. Luna Max is escalation-only. Never claim Luna without a real child receipt.'
-        '- Fan-out starts with exactly two disjoint workers after Sol proves a vertical slice and freezes interfaces. Automatic waves never exceed three live workers; eight is only the host ceiling. Children never spawn descendants, and one writer owns each path.'
-        '- Manager Mode beta activates on an explicit implementation request. A Sol manager advances phases through exactly one direct non-spawning Sol High child. Independent parent verification, bounded state, rotation, parking, stop/resume, and one replan are required. Automatic classification stays shadow-only until matched promotion.'
-        '- After green, use one fresh evidence-bound read-only Sol High verifier only for security, data integrity, compatibility, concurrency, integration, weak oracles, repaired attempts, consequential interaction, or an explicit audit. Sol adjudicates once, permits one repair, reruns all checks, and stops. Three judges are exceptional.'
-        '- For unfamiliar repositories, reuse real named build, lint, type, test, security, and E2E commands. For consequential UI, verify actual loading, empty, success, error, repeat, recovery, focus, narrow-layout, and reduced-motion states. Human judgment remains final for taste and usefulness.'
+        '- For fan-out, Manager Mode, or risk-triggered review, load only the applicable MochiCode route. One writer per path; children never spawn descendants; automatic waves start at two and cap at three. Manager Mode requires an explicit Manager Mode implementation request. No automatic merge.'
+        '- Load targeted-improvement only for two matching failures or two planning cycles without progress on an implementation request, missing necessary verification, a measured performance issue, explicit cleanup, or an observed model change. Recover once within authorized scope, preserve working code, and continue available independent work; no background optimization or automatic skill retirement.'
+        '- Read task-relevant files and reuse unchanged context. Reuse repository checks; rerun passing checks only for relevant changes or unresolved risk, while retaining required gates. Verify meaningful behavior in the real product. Human judgment remains final for taste and usefulness. Never weaken tests or safety boundaries.'
         '- Keep verified state only for interruption-prone work or Manager Mode. Candidate lessons are never injected; activate a lesson only after positive recurrence and a successful negative-control task.'
         '- `[MOCHICODE_CHILD]` performs only its assignment. Internal failures require diagnosis, rerouting, repair, or packet parking, not a false whole-goal block. Stop only for a specific human, external, spending, production, destructive, or irreversible gate after useful reversible work is exhausted.'
         '- Preserve every confirmation, privacy, process, secret, repository, and external-effect safety rule. Report meaningful milestones and exact model, effort, path, test, token, wall-time, rework, and uncertainty evidence.'
@@ -812,7 +815,10 @@ function Assert-AdaptiveAuditReport {
         'version',
         'available',
         'catalog_available',
+        'catalog_source',
+        'account_access_verified',
         'model_catalog',
+        'astra',
         'selected_model',
         'selected_model_bounds',
         'agent_defaults_probe',
@@ -825,6 +831,27 @@ function Assert-AdaptiveAuditReport {
         $capabilities.catalog_available -isnot [bool] -or $capabilities.catalog_available -ne $true
     ) {
         throw 'Adaptive config audit did not prove the Codex executable and model catalog.'
+    }
+    $astra = $capabilities.astra
+    Assert-OnlyObjectProperties $astra @(
+        'model',
+        'required_effort',
+        'status',
+        'available',
+        'activation_ready',
+        'reasoning_efforts',
+        'fast'
+    ) 'Astra readiness report'
+    if (
+        $astra.model -isnot [string] -or $astra.model -cne 'gpt-6-astra' -or
+        $astra.required_effort -isnot [string] -or $astra.required_effort -cne 'high' -or
+        $astra.status -isnot [string] -or
+        $astra.available -isnot [bool] -or
+        $astra.activation_ready -isnot [bool] -or
+        $astra.reasoning_efforts -isnot [System.Array] -or
+        $astra.fast -isnot [bool]
+    ) {
+        throw 'Adaptive config audit has an invalid Astra readiness result.'
     }
     $preservation = $Report.preservation
     Assert-OnlyObjectProperties $preservation @('unowned_values_and_bytes', 'secrets_emitted') 'Adaptive audit preservation report'
@@ -896,6 +923,8 @@ function Assert-AdaptiveMergeReport {
         'preserved_context',
         'set_direct_first_defaults',
         'set_terra_first_defaults',
+        'set_astra_first_defaults',
+        'mapped_reasoning_effort',
         'removed_default_service_tier'
     ) 'Adaptive merge changes report'
     foreach ($name in @(
@@ -909,6 +938,8 @@ function Assert-AdaptiveMergeReport {
         'preserved_context',
         'set_direct_first_defaults',
         'set_terra_first_defaults',
+        'set_astra_first_defaults',
+        'mapped_reasoning_effort',
         'removed_default_service_tier'
     )) {
         if ($changes.$name -isnot [System.Array]) {
@@ -1020,16 +1051,17 @@ function Invoke-AdaptiveConfigTransaction {
         [switch]$RemoveStaleContext,
         [switch]$DirectFirst,
         [switch]$TerraFirst,
+        [switch]$AstraFirst,
         [string[]]$DisableMcpNames = @()
     )
     if (-not (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf)) {
-        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $DisableMcpNames.Count -gt 0) {
+        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst -or $DisableMcpNames.Count -gt 0) {
             throw "Adaptive config helper is required for this explicit config operation: $adaptiveConfigScript"
         }
         return $null
     }
     if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $DisableMcpNames.Count -gt 0) {
+        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst -or $DisableMcpNames.Count -gt 0) {
             throw 'The explicit adaptive config operation requires an existing Codex config.'
         }
         return $null
@@ -1064,6 +1096,9 @@ function Invoke-AdaptiveConfigTransaction {
         }
         $auditReport = Convert-JsonBytesToObject ([System.Text.Encoding]::UTF8.GetBytes($audit.output)) 'Adaptive audit report' $adaptiveConfigScript
         Assert-AdaptiveAuditReport $auditReport $configPath
+        if ($AstraFirst -and $auditReport.capabilities.astra.activation_ready -ne $true) {
+            throw 'Astra-first refused: the live Codex catalog does not advertise gpt-6-astra with High reasoning.'
+        }
 
         $mergeArguments = @(
             '-B',
@@ -1091,6 +1126,9 @@ function Invoke-AdaptiveConfigTransaction {
         if ($TerraFirst) {
             $mergeArguments += '--terra-first'
         }
+        if ($AstraFirst) {
+            $mergeArguments += '--astra-first'
+        }
         $merge = Invoke-AdaptiveCommand $pythonPath $mergeArguments
         if ($merge.exit_code -ne 0) {
             throw "Adaptive config merge failed with exit $($merge.exit_code)."
@@ -1111,6 +1149,7 @@ function Invoke-AdaptiveConfigTransaction {
             remove_stale_context = [bool]$RemoveStaleContext
             direct_first = [bool]$DirectFirst
             terra_first = [bool]$TerraFirst
+            astra_first = [bool]$AstraFirst
             disabled_mcp = @($mergeReport.changes.disabled_mcp)
             already_disabled_mcp = @($mergeReport.changes.already_disabled_mcp)
             missing_mcp = @($mergeReport.changes.missing_mcp)
@@ -1305,10 +1344,11 @@ if ($RoutingCleanupOnly -and $UpdateExisting) {
 if ($DisableStaleMcp -and -not $RoutingCleanupOnly) {
     throw '-DisableStaleMcp requires -RoutingCleanupOnly and a canary receipt.'
 }
-if ($DirectFirst -and $TerraFirst) {
-    throw '-DirectFirst cannot be combined with the legacy -TerraFirst switch.'
+$selectedModelProfileCount = [int][bool]$DirectFirst + [int][bool]$TerraFirst + [int][bool]$AstraFirst
+if ($selectedModelProfileCount -gt 1) {
+    throw '-DirectFirst, -TerraFirst, and -AstraFirst are mutually exclusive.'
 }
-if (($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $DisableStaleMcp) -and -not (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf)) {
+if (($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst -or $DisableStaleMcp) -and -not (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf)) {
     throw "Adaptive config helper is required for the explicit config operation: $adaptiveConfigScript"
 }
 
@@ -1334,7 +1374,7 @@ if ($RoutingCleanupOnly) {
     foreach ($name in $staleAgentNames) {
         $cleanupTargets.Add((Join-Path $agentTarget $name))
     }
-    if ($DisableStaleMcp -or $RemoveStaleContext -or $DirectFirst -or $TerraFirst) {
+    if ($DisableStaleMcp -or $RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst) {
         $cleanupTargets.Add($configPath)
     }
     foreach ($target in $cleanupTargets) {
@@ -1363,12 +1403,13 @@ if ($RoutingCleanupOnly) {
         foreach ($name in $conflictingSkills) {
             Set-ImplicitPolicyFalse (Join-Path $userRoot ".agents\skills\$name")
         }
-        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $DisableStaleMcp) {
+        if ($RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst -or $DisableStaleMcp) {
             $disableNames = if ($DisableStaleMcp) { $staleMcpNames } else { @() }
             $adaptiveResult = Invoke-AdaptiveConfigTransaction `
                 -RemoveStaleContext:$RemoveStaleContext `
                 -DirectFirst:$DirectFirst `
                 -TerraFirst:$TerraFirst `
+                -AstraFirst:$AstraFirst `
                 -DisableMcpNames $disableNames
             $staleMcpChanges = @($adaptiveResult.disabled_mcp)
         }
@@ -1399,6 +1440,7 @@ if ($RoutingCleanupOnly) {
                 remove_stale_context = [bool]$RemoveStaleContext
                 direct_first = [bool]$DirectFirst
                 terra_first = [bool]$TerraFirst
+                astra_first = [bool]$AstraFirst
             }
             confirm_install = [bool]$ConfirmInstall
         })
@@ -1441,7 +1483,7 @@ foreach ($target in @($backupRoot, $latestReceipt, $pluginTarget, $marketplacePa
 foreach ($file in $agentFiles) {
     $activationTargets.Add((Join-Path $agentTarget $file.Name))
 }
-if (-not $SkipPluginCommand -or $RemoveStaleContext -or $DirectFirst -or $TerraFirst -or (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf)) {
+if (-not $SkipPluginCommand -or $RemoveStaleContext -or $DirectFirst -or $TerraFirst -or $AstraFirst -or (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf)) {
     $activationTargets.Add($configPath)
 }
 if (-not $SkipPluginCommand) {
@@ -1516,7 +1558,7 @@ try {
     Set-MochiCodeMarkerBlock $agentsPath $begin $end
 
     if (Test-Path -LiteralPath $adaptiveConfigScript -PathType Leaf) {
-        Invoke-AdaptiveConfigTransaction -RemoveStaleContext:$RemoveStaleContext -DirectFirst:$DirectFirst -TerraFirst:$TerraFirst | Out-Null
+        Invoke-AdaptiveConfigTransaction -RemoveStaleContext:$RemoveStaleContext -DirectFirst:$DirectFirst -TerraFirst:$TerraFirst -AstraFirst:$AstraFirst | Out-Null
     }
 
     if (-not $SkipPluginCommand) {

@@ -7,11 +7,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = PLUGIN_ROOT / "scripts" / "agent_adapter.py"
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
+import agent_adapter
 
 
 def run_adapter(*arguments: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -42,7 +45,9 @@ class AgentAdapterTests(unittest.TestCase):
                 json.dumps({"model": "known", "effortLevel": "high", "env": {"SECRET": "nope"}}),
                 encoding="utf-8",
             )
-            result = run_adapter("audit", "--agent", "claude", "--home", str(home))
+            environment = os.environ.copy()
+            environment["PATH"] = ""
+            result = run_adapter("audit", "--agent", "claude", "--home", str(home), env=environment)
         self.assertEqual(result.returncode, 0, result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["selected_settings"], {"effortLevel": "high", "model": "known"})
@@ -50,6 +55,56 @@ class AgentAdapterTests(unittest.TestCase):
         self.assertNotIn(str(home), result.stdout)
         self.assertEqual(report["workflow_template"], "<plugin-root>/portable/templates/agent-adapters/CORE-WORKFLOW.md")
         self.assertEqual(report["target"], "<user-home>/.claude/CLAUDE.md")
+
+    @unittest.skipUnless(os.name == "nt", "Codex shim uses a Windows command wrapper")
+    def test_codex_catalog_accepts_string_and_object_effort_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            shim = root / "shim"
+            shim.mkdir()
+            payload = {
+                "model_catalog": [
+                    {
+                        "id": "gpt-6-astra",
+                        "supported_reasoning_levels": [
+                            "high",
+                            {"effort": "max"},
+                            "unsafe-effort",
+                        ],
+                        "secret": "do-not-report",
+                    },
+                    {"name": "unsafe model slug", "supported_reasoning_levels": ["high"]},
+                ]
+            }
+            script = shim / "fake_codex.py"
+            script.write_text(
+                "import json\n"
+                f"print(json.dumps({payload!r}))\n",
+                encoding="utf-8",
+            )
+            (shim / "codex.cmd").write_text(
+                "@echo off\r\n"
+                'python "%~dp0fake_codex.py" %*\r\n',
+                encoding="ascii",
+            )
+            environment = os.environ.copy()
+            environment["PATH"] = str(shim) + os.pathsep + environment.get("PATH", "")
+            result = run_adapter(
+                "audit",
+                "--agent",
+                "codex",
+                "--home",
+                str(root / "profile"),
+                env=environment,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            report["catalog"]["models"],
+            [{"slug": "gpt-6-astra", "reasoning_efforts": ["high", "max"]}],
+        )
+        self.assertNotIn("do-not-report", result.stdout)
 
     def test_apply_requires_confirmation_and_preserves_existing_guidance_in_backup(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -109,6 +164,8 @@ class AgentAdapterTests(unittest.TestCase):
                 "--target",
                 str(target),
                 "--confirm",
+                "--backup-root",
+                str(root / "backups"),
             )
             refused = run_adapter(
                 "apply",
@@ -123,6 +180,48 @@ class AgentAdapterTests(unittest.TestCase):
         self.assertIn("Provider-specific guidance.", merged)
         self.assertIn("Generic coding-agent adapter", merged)
         self.assertNotEqual(refused.returncode, 0)
+
+    def test_codex_settings_read_root_values_without_comments_or_nested_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            (home / ".codex").mkdir()
+            path = home / ".codex" / "config.toml"
+            path.write_text(
+                'profile = "external-file"\n"model" = "root-model" # secret-canary\n'
+                "model_reasoning_effort = '''ultra'''\n"
+                '[profiles.external-file]\nmodel = "nested-model"\n'
+                '[unrelated]\nreview_model = "nested-review"\n', encoding="utf-8"
+            )
+            settings = agent_adapter._safe_codex_config(home)
+            self.assertEqual(settings, {"model": "root-model", "model_reasoning_effort": "ultra"})
+            path.write_text('model = [\n', encoding="utf-8")
+            self.assertIn("parse_error", agent_adapter._safe_codex_config(home))
+            path.write_bytes(b"\xff\xfe")
+            self.assertIn("parse_error", agent_adapter._safe_codex_config(home))
+
+    def test_catalog_uses_requested_home_and_catches_probe_failures(self) -> None:
+        home = PLUGIN_ROOT / "test-home-placeholder"
+        completed = subprocess.CompletedProcess([], 0, '{"models":[{"slug":"gpt-6-astra"}]}', '')
+        with mock.patch.object(agent_adapter.shutil, "which", return_value="fake-codex"), mock.patch.object(
+            agent_adapter.subprocess, "run", return_value=completed
+        ) as run:
+            result = agent_adapter._codex_catalog(home)
+            self.assertEqual(run.call_args.kwargs["env"]["CODEX_HOME"], str(home / ".codex"))
+            self.assertFalse(result["account_access_verified"])
+        for error in (OSError("private-canary"), subprocess.TimeoutExpired("private-canary", 20)):
+            with self.subTest(error=type(error).__name__), mock.patch.object(
+                agent_adapter.shutil, "which", return_value="fake-cli"
+            ), mock.patch.object(agent_adapter.subprocess, "run", side_effect=error):
+                result = agent_adapter._codex_catalog(home)
+                self.assertFalse(result["available"])
+                self.assertNotIn("private-canary", json.dumps(result))
+                self.assertFalse(agent_adapter._agent_executable("codex")["available"])
+
+    def test_ambiguous_markers_refuse_without_rewriting(self) -> None:
+        begin, end = agent_adapter.MARKER_BEGIN, agent_adapter.MARKER_END
+        for existing in (begin + begin + end, begin + end + end, end + begin):
+            with self.subTest(existing=existing), self.assertRaises(agent_adapter.AdapterError):
+                agent_adapter._replace_managed_block(existing, "replacement")
 
 
 if __name__ == "__main__":

@@ -21,13 +21,24 @@ def capability_report(
     effective_context_window: int = 272000,
     multi_agent: bool = True,
     fast_mode: bool = True,
+    astra_available: bool = False,
 ) -> dict[str, object]:
     return {
         "executable": "codex.exe",
         "version": "0.144.0",
         "available": True,
         "catalog_available": True,
+        "account_access_verified": True,
         "model_catalog": [],
+        "astra": {
+            "model": "gpt-6-astra",
+            "available": astra_available,
+            "activation_ready": astra_available,
+            "reasoning_efforts": ["low", "medium", "high", "xhigh", "max"]
+            if astra_available
+            else [],
+            "fast": False,
+        },
         "selected_model": "gpt-5.6-sol",
         "selected_model_bounds": {
             "slug": "gpt-5.6-sol",
@@ -110,6 +121,7 @@ class AdaptiveConfigTests(unittest.TestCase):
         remove_stale_context: bool = False,
         direct_first: bool = False,
         terra_first: bool = False,
+        astra_first: bool = False,
         text: str = BASE_CONFIG,
     ) -> tuple[str, dict[str, object]]:
         config = self._write_config(directory, text)
@@ -130,6 +142,7 @@ class AdaptiveConfigTests(unittest.TestCase):
                 remove_stale_context=remove_stale_context,
                 direct_first=direct_first,
                 terra_first=terra_first,
+                astra_first=astra_first,
             )
         self.assertEqual(payload, json.loads(report.read_text(encoding="utf-8")))
         return output.read_text(encoding="utf-8"), payload
@@ -165,7 +178,7 @@ class AdaptiveConfigTests(unittest.TestCase):
         self.assertIn('model = "gpt-5.6-terra"', output)
         self.assertIn('model_reasoning_effort = "high"', output)
         self.assertIn('model_context_window = 1000000 # old context note', output)
-        self.assertIn('model_auto_compact_token_limit = 400000', output)
+        self.assertIn('model_auto_compact_token_limit = 900000', output)
         self.assertIn('model_auto_compact_token_limit_scope = "total"', output)
         self.assertIn('model_reasoning_summary = "concise"', output)
         self.assertIn('model_verbosity = "low"', output)
@@ -187,12 +200,163 @@ class AdaptiveConfigTests(unittest.TestCase):
         self.assertIn('model = "gpt-5.6-sol"', output)
         self.assertIn('model_reasoning_effort = "high"', output)
         self.assertIn('model_context_window = 1000000', output)
-        self.assertIn('model_auto_compact_token_limit = 850000', output)
+        self.assertIn('model_auto_compact_token_limit = 900000', output)
         self.assertIn('model_auto_compact_token_limit_scope = "total"', output)
         self.assertIn('review_model = "gpt-5.6-sol"', output)
         self.assertNotIn('service_tier = "priority"', output)
         self.assertIn("model", payload["changes"]["set_direct_first_defaults"])
         self.assertEqual(payload["changes"]["removed_stale_context"], [])
+
+    def test_astra_first_is_capability_gated_and_preserves_requested_context(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaisesRegex(adaptive_config.ConfigError, "advertise gpt-6-astra"):
+                self._merge(Path(raw), astra_first=True)
+
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaisesRegex(adaptive_config.ConfigError, "mutually exclusive"):
+                self._merge(
+                    Path(raw),
+                    astra_first=True,
+                    direct_first=True,
+                    caps=capability_report(astra_available=True),
+                )
+
+        text = BASE_CONFIG.replace(
+            'model = "gpt-5.6-sol"',
+            'service_tier = "priority" # user can still enable Fast manually\nmodel = "gpt-5.6-sol"',
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            output, payload = self._merge(
+                Path(raw),
+                astra_first=True,
+                caps=capability_report(astra_available=True),
+                text=text,
+            )
+
+        self.assertIn('model = "gpt-6-astra"', output)
+        self.assertIn('model_reasoning_effort = "high"', output)
+        self.assertIn('model_context_window = 1000000', output)
+        self.assertIn('model_auto_compact_token_limit = 900000', output)
+        self.assertIn('review_model = "gpt-5.6-sol"', output)
+        self.assertNotIn('service_tier = "priority"', output)
+        self.assertIn("model", payload["changes"]["set_astra_first_defaults"])
+        self.assertEqual(payload["changes"]["removed_stale_context"], [])
+
+    def test_switches_preserve_compatible_effort_and_nonstandard_context(self) -> None:
+        text = (
+            '"model" = """custom-model""" # keep\n'
+            'model_reasoning_effort = "ultra"\n'
+            'review_model = "custom-review"\n'
+            'model_context_window = 1050000\n'
+            'model_auto_compact_token_limit = 920000\n'
+            'model_auto_compact_token_limit_scope = "input"\n'
+        )
+        for profile in ("direct_first", "terra_first", "astra_first"):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as raw:
+                target = {"direct_first": "gpt-5.6-sol", "terra_first": "gpt-5.6-terra", "astra_first": "gpt-6-astra"}[profile]
+                caps = capability_report(astra_available=True)
+                caps["model_catalog"] = [{"slug": target, "reasoning_efforts": ["high", "ultra"]}]
+                output, payload = self._merge(
+                    Path(raw), text=text, caps=caps,
+                    remove_stale_context=True, **{profile: True},
+                )
+                settings = adaptive_config.tomllib.loads(output)
+                self.assertEqual(settings["model"], target)
+                self.assertEqual(settings["model_reasoning_effort"], "ultra")
+                self.assertEqual(settings["model_context_window"], 1050000)
+                self.assertEqual(settings["model_auto_compact_token_limit"], 920000)
+                self.assertEqual(settings["model_auto_compact_token_limit_scope"], "input")
+                self.assertIn("# keep", output)
+                changed = payload["changes"][f"set_{profile}_defaults"]
+                for key in ("model_reasoning_effort", *adaptive_config.CONTEXT_KEYS):
+                    self.assertNotIn(key, changed)
+                self.assertEqual(payload["changes"]["removed_stale_context"], [])
+
+    def test_empty_direct_profile_still_defaults_to_sol_high(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            output, _ = self._merge(Path(raw), direct_first=True, text="")
+        settings = adaptive_config.tomllib.loads(output)
+        self.assertEqual(settings["model"], "gpt-5.6-sol")
+        self.assertEqual(settings["model_reasoning_effort"], "high")
+        self.assertEqual(settings["model_context_window"], 1000000)
+        self.assertEqual(settings["model_auto_compact_token_limit"], 850000)
+
+    def test_profile_names_are_preserved_but_not_resolved_as_inline_settings(self) -> None:
+        text = (
+            'profile = "chosen"\nmodel = "root-model"\n'
+            '[profiles.chosen]\nmodel = "chosen-model"\nmodel_reasoning_effort = "max"\n'
+            'model_context_window = 1050000\nmodel_auto_compact_token_limit = 930000\n'
+            '[profiles.other]\nmodel = "other-model"\n'
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            output, payload = self._merge(Path(raw), text=text, direct_first=True)
+            document = adaptive_config.load_config_document(Path(raw) / "config.toml")
+            with mock.patch.object(adaptive_config, "audit_capabilities", return_value=capability_report()) as audit:
+                adaptive_config.make_audit_report(document, "codex.exe")
+            audit.assert_called_once_with("codex.exe", selected_model="root-model")
+        settings = adaptive_config.tomllib.loads(output)
+        self.assertEqual(settings["profiles"], adaptive_config.tomllib.loads(text)["profiles"])
+        self.assertEqual(settings["model"], "gpt-5.6-sol")
+        self.assertEqual(settings["profile"], "chosen")
+        self.assertIn(adaptive_config.PROFILE_LIMITATION, payload["warnings"])
+
+    def test_disposable_catalog_can_generate_opt_in_astra_candidate_without_account_claim(self) -> None:
+        caps = capability_report(astra_available=True)
+        caps["account_access_verified"] = False
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            output, payload = self._merge(directory, caps=caps, astra_first=True)
+        self.assertIn('model = "gpt-6-astra"', output)
+        self.assertFalse(payload["capabilities"]["account_access_verified"])
+        self.assertIn("model_context_window = 1000000", output)
+        self.assertEqual(payload["changes"]["removed_stale_context"], [])
+
+    def test_unresolved_profile_values_are_preserved_without_resolution(self) -> None:
+        for value in ('[]', '"missing"', '{ bad = true }'):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as raw:
+                directory = Path(raw)
+                output, payload = self._merge(directory, text=f"profile = {value}\n", direct_first=True)
+                self.assertIn(f"profile = {value}", output)
+                self.assertIn(adaptive_config.PROFILE_LIMITATION, payload["warnings"])
+
+    def test_unsupported_effort_maps_only_with_catalog_evidence_and_report(self) -> None:
+        caps = capability_report()
+        caps["model_catalog"] = [{"slug": "gpt-5.6-sol", "reasoning_efforts": ["medium", "high"]}]
+        text = 'model = "old-model"\nmodel_reasoning_effort = "ultra"\n'
+        with tempfile.TemporaryDirectory() as raw:
+            output, payload = self._merge(Path(raw), text=text, caps=caps, direct_first=True)
+        self.assertIn('model_reasoning_effort = "high"', output)
+        self.assertEqual(payload["changes"]["mapped_reasoning_effort"], [{
+            "model": "gpt-5.6-sol", "from": "ultra", "to": "high",
+            "reason": "existing effort absent from target catalog reasoning_efforts",
+            "catalog_efforts": ["medium", "high"],
+        }])
+        with tempfile.TemporaryDirectory() as raw:
+            output, payload = self._merge(Path(raw), text=text, direct_first=True)
+        self.assertIn('model_reasoning_effort = "ultra"', output)
+        self.assertEqual(payload["changes"]["mapped_reasoning_effort"], [])
+        self.assertTrue(any("compatibility is unverified" in item for item in payload["warnings"]))
+
+    def test_non_scalar_context_does_not_crash_or_get_replaced(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            output, _ = self._merge(Path(raw), text="model_context_window = []\n", direct_first=True)
+        self.assertEqual(adaptive_config.tomllib.loads(output)["model_context_window"], [])
+
+    def test_scanner_does_not_treat_comment_quotes_or_multiline_contents_as_tables(self) -> None:
+        text = (
+            "# A comment containing '''\n"
+            'notes = [\n"""\n[features]\nfast_mode = true\n""",\n]\n'
+            '[features]\nmulti_agent = false\n'
+            '[custom]\nvalue = "keep"\n'
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            output, _ = self._merge(Path(raw), text=text, direct_first=True)
+        settings = adaptive_config.tomllib.loads(output)
+        original = adaptive_config.tomllib.loads(text)
+        self.assertEqual(settings["notes"], original["notes"])
+        self.assertEqual(settings["custom"], original["custom"])
+        self.assertIs(settings["features"]["multi_agent"], False)
+        self.assertIs(settings["features"]["fast_mode"], True)
 
     def test_opt_in_removes_only_proven_root_context_values_and_records_exact_values(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

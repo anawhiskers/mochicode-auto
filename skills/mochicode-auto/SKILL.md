@@ -1,65 +1,57 @@
 ---
 name: mochicode-auto
-description: Automatically preserve direct Sol for normal work and add a bounded Luna worker, Manager Mode, fresh verifier, fan-out, or resumable state only when observable triggers justify the overhead. Skip prompts marked MOCHICODE_CHILD.
+description: Keep project work direct; add bounded delegation or recovery only when justified. Do not orchestrate MOCHICODE_CHILD assignments.
 ---
 
 # MochiCode Auto
 
-MochiCode Auto is the only automatic top-level workflow for project work. The user supplies only the real goal once. Select the smallest route that can complete it, preserve existing safety and repository instructions, and add process only when its trigger is observable.
+MochiCode Auto is the only automatic top-level workflow. The user supplies only the real goal once. Preserve the user's original goal, safety, and repository knowledge.
 
-## Choose one route
+## Choose the smallest route
 
-1. **Direct current parent** for conversation, lookups, tiny rewrites, one-step navigation, and one obvious reversible action.
-2. **Direct Sol** for substantive, coupled, ambiguous, architectural, product, UI/UX, visual, debugging, integration, or sequential work. Sol High is the default. Use Max only for consequential whole-product, security, release, or repeated quality-failure decisions. Ultra is exceptional.
-3. **Bounded Luna Medium worker** for one sizable independent implementation leaf with a frozen interface, declared paths, hard checks, no open product decision, and a concrete expected saving from leaf size, slow verification, external latency, context isolation, or batch volume. Escalate the same valid packet to Luna Max only after failed acceptance or proven difficulty.
-4. **Bounded Sol-led fan-out** only after Sol proves a vertical slice and freezes at least two disjoint leaves. Start exactly two workers. Automatic waves never exceed three live workers. Eight is a host ceiling, not an automatic target.
-5. **Bounded Manager Mode beta** only when explicitly requested. Automatic classification stays shadow-only until promoted. Candidates require implementation with 3 to 6 phases, a wave-one vertical slice, at least 6 production files across 2 components, complete oracles, frozen decisions, one sequential writer, a confirmed non-spawning child, no proven fan-out advantage, and no need for the heavier controller. Sol manages one Sol High implementer; state rotates, parks, resumes, and permits one replan.
-6. **Experimental controller** only when explicitly selected. It remains unpromoted until its decision persistence, packet affordability, replanning, compact final review, and usage aggregation gates pass.
+1. **Direct current parent** for conversation, lookups, and small actions. Do the task without loading additional workflow references.
+2. **Direct selected authority** for substantive, coupled, product, architectural, visual, debugging, integration, or sequential work. Preserve the running parent and selected effort. Sol High is the default only when no authority was selected. Do not inherit an older model's effort recommendation automatically.
+3. **Bounded Luna Medium worker** for a sizable independent leaf with frozen decisions, owned paths, hard checks, and a concrete expected saving. Escalate to Luna Max only after failed acceptance or verified difficulty.
+4. **Bounded authority-led fan-out** after a working vertical slice and at least two frozen disjoint leaves. Start two workers, at most three automatic workers; eight is the host ceiling. Read [workflow details](references/workflow.md) when delegating.
+5. **Bounded Manager Mode beta** only for an explicit Manager Mode implementation request. Read [Manager Mode](references/manager-mode.md) before use. Automatic classification stays shadow-only.
+6. **Experimental controller** only when explicitly selected. Read [safety boundaries](references/safety.md) and [commands](references/commands.md) before use.
 
-Direct Sol is a stock-quality passthrough. Preserve the user's original goal and repository instructions. Do not add packets, workers, critics, or a ledger merely because this skill loaded. A skill cannot change the running parent model. Never report Luna work without a real child receipt.
+Direct selected authority is a stock-quality passthrough, not another mandatory itinerary. Do not add planning files, workers, critics, skill calls, or ledgers just because this skill loaded. A skill cannot change the running model. Never report Luna work without a real child receipt.
 
-A prompt beginning with `[MOCHICODE_CHILD]` performs only its assigned role and never invokes this workflow or spawns descendants.
+`[MOCHICODE_CHILD]` does only its assignment, never invokes this workflow, and never spawns descendants.
 
-## Conditional quality mechanisms
+## Authority and boundaries
 
-Use these inside the selected route, never as automatic ceremony:
+The current selected authority is the substantive parent and final authority for product, architecture, curriculum, visual design, UI/UX, motion, coupled implementation, and integration. Workers cannot redesign the product or shared interfaces. Terra is absent from the default native path; it is optional read-only support in an explicit controller experiment. Deterministic queues and budgets apply only in the experimental route.
 
-- **Acceptance brief:** direct Sol may write at most 300 words with outcome, non-goals, affected seams, checks, and rollback constraints for ambiguity, multiple subsystems, public contracts, migrations, security, concurrency, or consequential behavior. It is same-context, not a separate planning call.
-- **Verification profile:** in an unfamiliar repository, inspect and reuse its documented build, lint, type, unit, integration, security, and E2E commands. Keep this outside production paths and refresh only when build or CI configuration changes.
-- **Fresh verifier:** after direct Sol reaches green, use one fresh read-only Sol High verifier only for authentication or authorization, destructive or data-integrity behavior, public compatibility, concurrency, cross-system integration, weak or missing oracles, a repaired first attempt, consequential interactive behavior, or an explicit quality audit. Give it the objective, acceptance manifest, changed paths, diffstat, verification receipts, and only the risk-specific files it requests. Each finding needs an executable reproduction or exact code or state evidence. Sol adjudicates once, performs at most one repair, reruns the full checks, and stops.
-- **Exceptional panel:** use three fresh read-only judges only for an explicit benchmark or a consequential multi-domain decision where one verifier cannot cover the independent product, accessibility, and integration questions. Deduplicate once. There is still only one repair pass.
-- **Interactive state matrix:** for consequential UI behavior, verify the applicable loading, empty, success, validation or error, repeat-action, recovery, focus, narrow-layout, and reduced-motion states in the running product. Automated checks cannot overrule human judgment about taste, clarity, usefulness, enjoyment, legibility, or AI-slop.
-- **Long-task state:** use the Manager Mode phase ledger for qualifying work. Otherwise keep compact verified state only when interruption or compaction is likely. Never add ledger tax to short tasks.
+One writer owns each path or shared state. Children must never spawn descendants. Treat native limits as behavioral instructions unless host tool denial is verified; configuration alone is not proof. Read the selected route before dispatch and use its completion format:
 
-## Role authority
+- Native leaf: `schemas/child-completion.schema.json`
+- Manager implementer: `schemas/manager-child-completion.schema.json`
+- Experimental controller: `schemas/implementation.schema.json`
 
-- Sol is the substantive parent and final authority for product, architecture, curriculum, visual design, UI/UX, interaction, motion, tightly coupled implementation, integration, debugging, live verification, and final judgment. Use High normally.
-- In Manager Mode, the manager does not write production code while one `mochicode_manager_implementer` Sol High child owns phases sequentially. The child never spawns, reads memory or global config, loads optional tooling, runs servers, or controls a browser unless explicitly assigned. If creation fails before writing, fall back to the parent.
-- Luna implements only declared sizable leaves. It may make local code choices inside a frozen Sol decision, but it cannot redesign the product or shared interface.
-- Terra is absent from the default native path. It remains optional only as a read-only evidence or contract specialist inside an explicit controller experiment.
-- The deterministic controller owns queues, dependencies, retries, budgets, fingerprints, process identity, worktrees, evidence, and integration only in the experimental route.
+Give children only the goal, owned paths, frozen decisions, checks, and required evidence. Record each real child role, model, effort, owned paths, result, and available usage. Permit one format-only receipt correction, then fail closed as partial or failed. Receipts do not replace independent verification. Name new tasks `[ROLE | MODEL | EFFORT] concise objective` when supported; do not rename existing user tasks.
 
-## Delegation and stopping invariants
+## Read and verify proportionately
 
-- One writer owns each file, module, migration, configuration area, or shared state.
-- Maximum depth is one, parent to child. Children never spawn descendants.
-- Give implementers only their objective, paths, frozen decisions, checks, commands, and evidence. Require `schemas/child-completion.schema.json`; allow one format-only correction, then fail closed. Receipt validity does not replace parent verification.
-- Record each real child role, model, effort, owned paths, checks, result, stop reason, and available telemetry. Name new parent tasks `[ROLE | MODEL | EFFORT] concise objective` when supported.
-- After two matching failures, change method. Park repeated fingerprints and continue independent work. Never run an unbounded Gauntlet, Ralph, critic, or retry loop.
-- A future human test is readiness work, not a blocker. Prepare the testable slice, question, capture method, and pass or fail criteria, then continue independent reversible work.
-- Internal failures are work. Inspect evidence, narrow or reroute, retry only when justified, repair prerequisites, or park one packet. A valid blocker requires a specific human-only, external-authority, credential, service, hardware, spending, production, destructive, or irreversible gate after useful reversible work is exhausted.
-- Do not emit repeated waiting updates. Report meaningful milestones, required user action, or verified completion.
+Start from task-relevant files and the applicable instruction chain. Reuse unchanged material already read in this task. Expand discovery only for a concrete dependency, uncertainty, or failure, not a mandatory whole-repository map. Required host instructions still apply.
 
-## Skill and memory coexistence
+Use existing repository commands and the smallest meaningful behavioral check, plus required build/CI gates. Do not create a verification-profile file unless it will be reused. Repeat passing checks only after relevant changes, changed state, a failure, or an unresolved risk; never skip mandatory gates or weaken tests. Fix failures caused by authorized edits, not unrelated defects by default. End implementation work with the requested runnable result, not the first draft or test failure.
 
-`config/skill-dispositions.json` is the registry for user-owned skill routing. No other skill may start a competing top-level loop. Read [skill-system policy](references/skill-system.md) only when installing, retiring, restoring, or auditing skills.
+After green, use one fresh read-only Sol High verifier only for authentication/authorization, data integrity, compatibility, concurrency, integration, weak oracles, repaired attempts, consequential interaction, or an explicit audit. Require exact evidence for findings, adjudicate once, allow at most one repair round, then rerun affected and required checks. Finish that review cycle and return to the goal. Unresolved important defects remain incomplete; no endless critic loop. Three judges are exceptional, for an explicit benchmark or consequential multi-domain decision.
 
-Store only bounded verified failure mechanisms, never raw prompts, logs, diffs, secrets, or narrative guesses. Candidate lessons never enter ordinary prompts. An explicit candidate trial records the requested expectation and whether the provider actually applied the lesson; a lesson may become active only after positive recurrence and a separate successful negative-control trial where it stayed inactive. Expire or revalidate lessons after relevant model or tool changes.
+For consequential interaction, check applicable loading, empty, success, error, repeat, recovery, focus, narrow-layout, and reduced-motion behavior in the running product. Human judgment is final for taste, usefulness, enjoyment, legibility, and AI-slop. A future human test is readiness work, not a blocker: prepare the testable slice and questions, then continue independent safe work.
 
-## Detailed routes
+## Recovery and context
 
-Read [Manager Mode](references/manager-mode.md) only when that route activates. Read [workflow details](references/workflow.md) for fan-out, controller execution, recovery, or shared limits. Read [safety boundaries](references/safety.md) before controller changes and [command reference](references/commands.md) when invoking the experimental controller.
+After two matching failures, change method. Internal failures are work: diagnose, repair, reroute, or park. A valid blocker requires a specific human-only or external gate after useful reversible work is exhausted. Do not emit repeated waiting updates.
 
-## Completion
+Read [targeted improvement](references/targeted-improvement.md) for repeated implementation failures or planning without progress, a missing necessary check, an in-scope measured performance problem, explicit cleanup, or an observed model change. It adds no background loop or automatic rewrite.
 
-Report the selected route, actual parent model, proven child models and efforts, changed paths, checks, tokens when available, wall time, rework, and remaining uncertainty. Do not claim a model, check, or action without current evidence. Never auto-merge controller integration into the user's source branch.
+For substantive Astra work involving model behavior, routing, or verification, read [Astra mode](references/astra-mode.md) once and reuse it while unchanged. Session identity proves the running model; catalog omission does not disprove it. Only a new installation choice requires capability confirmation.
+
+Keep compact verified state only for interruption-prone work or explicit Manager Mode. Store only bounded verified failure mechanisms, never raw prompts, logs, diffs, secrets, or guesses as lessons. Candidate lessons stay inactive until positive recurrence and a successful negative-control task. Read [skill-system policy](references/skill-system.md) when auditing, installing, retiring, or restoring skills. Never automatically retire capabilities or override memory/privacy authority.
+
+Registry: `config/skill-dispositions.json`. No other skill may start a competing top-level loop.
+
+Report material changed paths, checks and outcomes, real model/worker evidence, available usage, and remaining uncertainty. Missing telemetry is unknown, not savings. Preserve confirmation gates. Never auto-merge controller integration into the user's source branch.

@@ -14,10 +14,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from typing import Any
+
+from mochicode_core.capabilities import KNOWN_REASONING_EFFORTS, parse_model_catalog
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +74,8 @@ def _replace_managed_block(existing: str, managed: str) -> str:
     if start == -1 and end == -1:
         suffix = "" if not existing or existing.endswith("\n") else "\n"
         return existing + suffix + "\n" + managed
+    if existing.count(MARKER_BEGIN) != 1 or existing.count(MARKER_END) != 1:
+        raise AdapterError("existing workflow markers are ambiguous; refusing to overwrite")
     if start == -1 or end == -1 or end < start:
         raise AdapterError("existing workflow markers are incomplete; refusing to overwrite")
     end += len(MARKER_END)
@@ -81,15 +87,18 @@ def _safe_codex_config(home: Path) -> dict[str, str]:
     path = home / ".codex" / "config.toml"
     if not path.is_file():
         return {}
-    allowed = {"model", "model_reasoning_effort", "review_model"}
-    values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8-sig").splitlines():
-        if "=" not in line:
-            continue
-        key, value = (part.strip() for part in line.split("=", 1))
-        if key in allowed:
-            values[key] = value
-    return values
+    try:
+        raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+    except (tomllib.TOMLDecodeError, UnicodeError):
+        return {"parse_error": "config is not valid UTF-8 TOML"}
+    return {
+        key: value for key in ("model", "model_reasoning_effort", "review_model")
+        if isinstance((value := raw.get(key)), str)
+        and (
+            value in KNOWN_REASONING_EFFORTS if key == "model_reasoning_effort"
+            else re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", value)
+        )
+    }
 
 
 def _safe_claude_settings(home: Path) -> dict[str, Any]:
@@ -98,42 +107,52 @@ def _safe_claude_settings(home: Path) -> dict[str, Any]:
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        return {"parse_error": error.msg}
+    except (ValueError, UnicodeError):
+        return {"parse_error": "settings is not valid UTF-8 JSON"}
     if not isinstance(raw, dict):
         return {"parse_error": "settings root is not an object"}
-    return {key: raw[key] for key in SAFE_CLAUDE_KEYS if key in raw}
+    return {
+        key: raw[key] for key in SAFE_CLAUDE_KEYS
+        if isinstance(raw.get(key), str)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}", raw[key])
+    }
 
 
-def _codex_catalog() -> dict[str, Any]:
+def _codex_catalog(home: Path) -> dict[str, Any]:
     executable = shutil.which("codex") or shutil.which("codex.cmd")
     if executable is None:
         return {"available": False, "reason": "Codex executable not found"}
-    result = subprocess.run(
-        [executable, "debug", "models"],
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        timeout=20,
-    )
+    environment = os.environ.copy()
+    environment["CODEX_HOME"] = str(home / ".codex")
+    environment["HOME"] = str(home)
+    environment["USERPROFILE"] = str(home)
+    try:
+        result = subprocess.run(
+            [executable, "debug", "models"],
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {"available": False, "reason": "Codex model catalog command unavailable"}
     if result.returncode != 0:
         return {"available": False, "reason": "Codex model catalog command failed"}
-    try:
-        raw = json.loads(result.stdout)
-    except json.JSONDecodeError:
+    safe_catalog = parse_model_catalog(result.stdout)
+    if not safe_catalog:
         return {"available": False, "reason": "Codex model catalog was not valid JSON"}
-    models = raw.get("models", []) if isinstance(raw, dict) else []
-    safe_models = []
-    for model in models if isinstance(models, list) else []:
-        if not isinstance(model, dict) or not isinstance(model.get("slug"), str):
-            continue
-        efforts = model.get("supported_reasoning_levels", [])
-        safe_efforts = [item.get("effort") for item in efforts if isinstance(item, dict) and isinstance(item.get("effort"), str)]
-        safe_models.append({"slug": model["slug"], "reasoning_efforts": safe_efforts})
-    return {"available": True, "models": safe_models}
+    safe_models = [
+        {
+            "slug": model["slug"],
+            "reasoning_efforts": model.get("reasoning_efforts", []),
+        }
+        for model in safe_catalog
+    ]
+    return {"available": True, "account_access_verified": False, "models": safe_models}
 
 
 def _agent_executable(agent: str) -> dict[str, Any]:
@@ -151,7 +170,7 @@ def _agent_executable(agent: str) -> dict[str, Any]:
             check=False,
             timeout=10,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return {"available": False}
     version = " ".join((result.stdout + "\n" + result.stderr).split())[:240]
     return {"available": result.returncode == 0, "version": version if result.returncode == 0 else None}
@@ -181,7 +200,8 @@ def command_audit(args: argparse.Namespace) -> int:
     }
     if args.agent == "codex":
         report["selected_settings"] = _safe_codex_config(home)
-        report["catalog"] = _codex_catalog()
+        report["selected_settings_scope"] = "root config.toml only; -p profile files and runtime overrides are not resolved"
+        report["catalog"] = _codex_catalog(home)
     elif args.agent == "claude":
         report["selected_settings"] = _safe_claude_settings(home)
         report["executable"] = _agent_executable("claude")
@@ -274,8 +294,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return int(args.handler(args))
-    except (AdapterError, OSError) as error:
-        print(f"agent-adapter: {error}", file=sys.stderr)
+    except (AdapterError, OSError, UnicodeError) as error:
+        detail = str(error) if isinstance(error, AdapterError) else "file operation failed"
+        print(f"agent-adapter: {detail}", file=sys.stderr)
         return 2
 
 

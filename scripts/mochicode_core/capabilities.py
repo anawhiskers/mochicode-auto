@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -24,6 +25,10 @@ DEFAULT_AGENT_MODEL = "gpt-5.6-luna"
 DEFAULT_AGENT_REASONING_EFFORT = "medium"
 DEFAULT_AGENT_MAX_THREADS = 8
 CONTEXT_ASSUMPTION_TOKENS = 1_000_000
+ASTRA_MODEL = "gpt-6-astra"
+KNOWN_REASONING_EFFORTS = frozenset(
+    {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+)
 
 AGENT_DEFAULTS: dict[str, object] = {
     "enabled": True,
@@ -102,7 +107,18 @@ def audit_capabilities(
         "version": None,
         "available": False,
         "catalog_available": False,
+        "catalog_source": "disposable_home",
+        "account_access_verified": False,
         "model_catalog": [],
+        "astra": {
+            "model": ASTRA_MODEL,
+            "required_effort": "high",
+            "status": "catalog_unavailable",
+            "available": False,
+            "activation_ready": False,
+            "reasoning_efforts": [],
+            "fast": False,
+        },
         "selected_model": safe_selected_model,
         "selected_model_bounds": None,
         "agent_defaults_probe": {
@@ -141,12 +157,17 @@ def audit_capabilities(
             20.0,
         )
     catalog = (
-        _model_catalog_from_output(catalog_result.stdout)
+        parse_model_catalog(catalog_result.stdout)
         if catalog_result.returncode == 0
         else []
     )
     report["model_catalog"] = catalog
     report["catalog_available"] = bool(catalog) and catalog_result.returncode == 0
+    report["astra"] = model_readiness(report, ASTRA_MODEL, "high")
+    if report["catalog_available"]:
+        report["warnings"].append(
+            "The disposable-home catalog describes CLI capabilities; account model access is unverified."
+        )
     if catalog_result.returncode == 0:
         report["available"] = True
     elif not report["available"]:
@@ -190,12 +211,71 @@ def selected_model_context_bounds(
     model = raw.get("slug")
     maximum = _positive_int(raw.get("max_context_window"))
     effective = _positive_int(raw.get("effective_context_window"))
-    if not isinstance(model, str) or (maximum is None and effective is None):
+    if (
+        _safe_model_slug(model) is None
+        or (capabilities.get("selected_model") is not None and model != capabilities["selected_model"])
+        or (maximum is None and effective is None)
+    ):
         return None
     return {
         "slug": model,
         "max_context_window": maximum,
         "effective_context_window": effective,
+    }
+
+
+def model_readiness(
+    capabilities: Mapping[str, Any], model_slug: str, required_effort: str
+) -> dict[str, Any]:
+    """Check catalog compatibility for an opt-in candidate, not authenticated API access."""
+
+    if (
+        _safe_model_slug(model_slug) is None
+        or not isinstance(required_effort, str)
+        or required_effort not in KNOWN_REASONING_EFFORTS
+    ):
+        raise ValueError("model readiness request is invalid")
+    catalog = capabilities.get("model_catalog")
+    if capabilities.get("catalog_available") is not True or not isinstance(catalog, list):
+        return {
+            "model": model_slug,
+            "required_effort": required_effort,
+            "status": "catalog_unavailable",
+            "available": False,
+            "activation_ready": False,
+            "reasoning_efforts": [],
+            "fast": False,
+        }
+    matches = [
+        item for item in catalog
+        if isinstance(item, Mapping) and item.get("slug") == model_slug
+    ]
+    model = matches[0] if len(matches) == 1 else None
+    if model is None:
+        return {
+            "model": model_slug,
+            "required_effort": required_effort,
+            "status": "catalog_ambiguous" if matches else "slug_absent",
+            "available": False,
+            "activation_ready": False,
+            "reasoning_efforts": [],
+            "fast": False,
+        }
+    efforts = model.get("reasoning_efforts")
+    safe_efforts = [
+        value
+        for value in efforts
+        if isinstance(value, str) and value in KNOWN_REASONING_EFFORTS
+    ] if isinstance(efforts, list) else []
+    supported = required_effort in safe_efforts
+    return {
+        "model": model_slug,
+        "required_effort": required_effort,
+        "status": "ready" if supported else "effort_unsupported",
+        "available": True,
+        "activation_ready": supported,
+        "reasoning_efforts": safe_efforts,
+        "fast": model.get("fast") is True,
     }
 
 
@@ -266,7 +346,7 @@ def _version_from_output(output: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _model_catalog_from_output(output: str) -> list[dict[str, Any]]:
+def parse_model_catalog(output: str) -> list[dict[str, Any]]:
     value = _json_value(output)
     if not isinstance(value, Mapping):
         return []
@@ -303,6 +383,11 @@ def _model_catalog_from_output(output: str) -> list[dict[str, Any]]:
             ),
         ):
             numeric = _first_positive_number(raw, input_names)
+            if output_name == "effective_context_window_percent":
+                if numeric is not None and numeric > 100:
+                    numeric = None
+            else:
+                numeric = _positive_int(numeric)
             if numeric is not None:
                 item[output_name] = numeric
         if "effective_context_window" not in item:
@@ -318,10 +403,6 @@ def _model_catalog_from_output(output: str) -> list[dict[str, Any]]:
                     * item["effective_context_window_percent"]
                     / 100
                 )
-        if "max_context_window" not in item:
-            effective = item.get("effective_context_window")
-            if isinstance(effective, int):
-                item["max_context_window"] = effective
 
         effort_values = raw.get("supported_reasoning_levels")
         if isinstance(effort_values, list):
@@ -331,8 +412,13 @@ def _model_catalog_from_output(output: str) -> list[dict[str, Any]]:
                     efforts.append(effort["effort"])
                 elif isinstance(effort, str):
                     efforts.append(effort)
-            if efforts:
-                item["reasoning_efforts"] = efforts
+            safe_efforts = [
+                effort
+                for effort in efforts
+                if effort in KNOWN_REASONING_EFFORTS
+            ]
+            if safe_efforts:
+                item["reasoning_efforts"] = list(dict.fromkeys(safe_efforts))
 
         item["fast"] = _has_fast_support(raw)
         catalog.append(item)
@@ -340,9 +426,11 @@ def _model_catalog_from_output(output: str) -> list[dict[str, Any]]:
 
 
 def _json_value(output: str) -> Any:
+    if not isinstance(output, str):
+        return None
     try:
         return json.loads(output)
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, ValueError, RecursionError):
         pass
     start = output.find("{")
     end = output.rfind("}")
@@ -350,7 +438,7 @@ def _json_value(output: str) -> Any:
         return None
     try:
         return json.loads(output[start : end + 1])
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, ValueError, RecursionError):
         return None
 
 
@@ -361,7 +449,11 @@ def _first_positive_number(
         candidate = value.get(name)
         if isinstance(candidate, bool):
             continue
-        if isinstance(candidate, (int, float)) and candidate > 0:
+        if (
+            isinstance(candidate, (int, float))
+            and 0 < candidate <= 2**63 - 1
+            and (isinstance(candidate, int) or math.isfinite(candidate))
+        ):
             return candidate
     return None
 
@@ -393,10 +485,8 @@ def _select_model(
 ) -> dict[str, Any] | None:
     if not isinstance(selected_model, str):
         return None
-    for model in catalog:
-        if model.get("slug") == selected_model:
-            return dict(model)
-    return None
+    matches = [model for model in catalog if model.get("slug") == selected_model]
+    return dict(matches[0]) if len(matches) == 1 else None
 
 
 def _safe_model_slug(value: Any) -> str | None:
@@ -417,20 +507,17 @@ def _unsupported_context_assumptions(
     selected_model: str | None,
 ) -> list[dict[str, Any]]:
     if selected is not None:
-        limits = [
-            value
-            for key in ("max_context_window", "effective_context_window")
-            if isinstance((value := selected.get(key)), int) and value > 0
-        ]
-        if limits and CONTEXT_ASSUMPTION_TOKENS > min(limits):
+        maximum = _positive_int(selected.get("max_context_window"))
+        if maximum is not None and CONTEXT_ASSUMPTION_TOKENS > maximum:
             return [
                 {
                     "assumption": CONTEXT_ASSUMPTION_TOKENS,
                     "supported": False,
                     "model": selected.get("slug"),
                     "detail": (
-                        f"Selected model {selected.get('slug')} does not support the "
-                        f"{CONTEXT_ASSUMPTION_TOKENS:,}-token context assumption."
+                        f"The catalog advertises a lower maximum for {selected.get('slug')} "
+                        f"than the {CONTEXT_ASSUMPTION_TOKENS:,}-token context setting; "
+                        "effective account limits are unverified."
                     ),
                 }
             ]

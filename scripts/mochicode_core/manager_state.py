@@ -242,6 +242,7 @@ def _load_manager_state_unlocked(root: Path) -> dict[str, Any]:
     ).hexdigest()
     if not records or records[-1].get("state_hash") != state_hash:
         raise ManagerStateError("manager state does not match its latest evidence")
+    _verify_stored_receipts(root, state)
     return state
 
 
@@ -373,8 +374,8 @@ def _finish_phase_unlocked(
     if result == "accepted":
         if receipt_path is None or verification_path is None:
             raise ManagerStateError("accepted manager phase requires child and parent receipts")
-        receipt = _read_receipt(receipt_path)
-        verification = _read_receipt(verification_path)
+        receipt, receipt_bytes = _read_receipt_snapshot(receipt_path)
+        verification, verification_bytes = _read_receipt_snapshot(verification_path)
         _validate_parent_verification(
             verification,
             phase=phase,
@@ -387,8 +388,6 @@ def _finish_phase_unlocked(
             implementer_thread_id=state["implementer_thread_id"],
             verified_revision=verification["verified_revision"],
         )
-        receipt_bytes = Path(receipt_path).read_bytes()
-        verification_bytes = Path(verification_path).read_bytes()
         child_hash = hashlib.sha256(receipt_bytes).hexdigest()
         verification_hash = hashlib.sha256(verification_bytes).hexdigest()
         if any(
@@ -398,6 +397,8 @@ def _finish_phase_unlocked(
         ):
             raise ManagerStateError("manager child receipt was already used by another phase")
         receipt_root = root / "receipts" / phase_id
+        if not receipt_root.resolve().is_relative_to(root):
+            raise ManagerStateError("manager receipt directory escapes the run root")
         receipt_root.mkdir(parents=True, exist_ok=True)
         trusted_child = receipt_root / f"child-{child_hash}.json"
         trusted_verification = receipt_root / f"parent-{verification_hash}.json"
@@ -443,10 +444,7 @@ def _finish_phase_unlocked(
     state["current_phase"] = None
     state["active_writer_id"] = None
     state["updated_at"] = time.time()
-    if all(phase["status"] == "accepted" for phase in state["phases"]):
-        state["status"] = "complete"
-    elif next_ready_phase(state) is None:
-        state["status"] = "needs_replan"
+    _refresh_run_status(state)
     _commit_transition(root, state, event, phase_id=phase_id)
     return state
 
@@ -459,6 +457,8 @@ def request_manager_stop(run_root: Path) -> dict[str, Any]:
 
 
 def _request_manager_stop_unlocked(root: Path, state: dict[str, Any]) -> dict[str, Any]:
+    if state["status"] in {"complete", "stopped"}:
+        return state
     state["stop_requested"] = True
     state["status"] = "stopped"
     state["updated_at"] = time.time()
@@ -477,10 +477,22 @@ def _resume_manager_unlocked(root: Path, state: dict[str, Any]) -> dict[str, Any
     if state["status"] != "stopped":
         raise ManagerStateError("only a stopped manager run can resume")
     state["stop_requested"] = False
-    state["status"] = "active"
+    _refresh_run_status(state)
     state["updated_at"] = time.time()
     _commit_transition(root, state, "manager_resumed", phase_id=state["current_phase"])
     return state
+
+
+def _refresh_run_status(state: dict[str, Any]) -> None:
+    if all(phase["status"] == "accepted" for phase in state["phases"]):
+        state["status"] = "complete"
+        state["stop_requested"] = False
+    elif state["stop_requested"]:
+        state["status"] = "stopped"
+    else:
+        state["status"] = "active"
+        if next_ready_phase(state) is None:
+            state["status"] = "needs_replan"
 
 
 def apply_manager_replan(
@@ -558,6 +570,7 @@ def manager_status(run_root: Path) -> dict[str, Any]:
         "next_phase": None if ready is None else ready["id"],
         "counts": counts,
         "usage": state["usage"],
+        "usage_scope": "accepted_phase_receipts_only",
         "phases": state["phases"],
     }
 
@@ -713,8 +726,14 @@ def _commit_transition(
     phase_id: str | None,
 ) -> None:
     state_hash = _state_hash(state)
+    ledger = EvidenceLedger(root / EVIDENCE_FILE)
+    ok, reason = ledger.verify()
+    if not ok:
+        raise ManagerStateError(f"manager evidence is invalid before transaction: {reason}")
+    records = ledger.records()
     transaction = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "previous_record_hash": records[-1]["record_hash"] if records else None,
         "event": event,
         "phase_id": phase_id,
         "state_hash": state_hash,
@@ -740,8 +759,8 @@ def _recover_pending_transition(root: Path) -> None:
         raise ManagerStateError("manager pending transaction is unreadable") from error
     if (
         not isinstance(transaction, dict)
-        or set(transaction) != {"schema_version", "event", "phase_id", "state_hash", "state"}
-        or transaction.get("schema_version") != 1
+        or set(transaction) != {"schema_version", "event", "phase_id", "state_hash", "state", "previous_record_hash"}
+        or transaction.get("schema_version") != 2
         or not isinstance(transaction.get("event"), str)
         or not transaction["event"]
         or (
@@ -761,6 +780,14 @@ def _recover_pending_transition(root: Path) -> None:
         raise ManagerStateError(f"manager evidence is invalid during recovery: {reason}")
     records = ledger.records()
     matching_latest = bool(records and records[-1].get("state_hash") == transaction["state_hash"])
+    expected_previous = transaction["previous_record_hash"]
+    actual_previous = (
+        records[-1].get("previous_hash") if matching_latest
+        else records[-1]["record_hash"] if records else None
+    )
+    if expected_previous != actual_previous:
+        raise ManagerStateError("manager pending transaction does not extend the current evidence")
+    _verify_stored_receipts(root, state)
     if not matching_latest:
         if any(record.get("state_hash") == transaction["state_hash"] for record in records):
             raise ManagerStateError("manager pending transaction is stale")
@@ -844,16 +871,40 @@ def _atomic_write(path: Path, content: bytes) -> None:
 
 
 def _read_receipt(path: Path) -> dict[str, Any]:
+    return _read_receipt_snapshot(path)[0]
+
+
+def _read_receipt_snapshot(path: Path) -> tuple[dict[str, Any], bytes]:
     resolved = Path(path).resolve()
-    if not resolved.is_file() or resolved.stat().st_size > 1_000_000:
-        raise ManagerStateError("manager receipt is missing or oversized")
     try:
-        value = json.loads(resolved.read_text(encoding="utf-8"))
+        with resolved.open("rb") as handle:
+            content = handle.read(1_000_001)
+        if len(content) > 1_000_000:
+            raise ManagerStateError("manager receipt is oversized")
+        value = json.loads(content.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ManagerStateError("manager receipt is not valid JSON") from error
     if not isinstance(value, dict):
         raise ManagerStateError("manager receipt must be an object")
-    return value
+    return value, content
+
+
+def _verify_stored_receipts(root: Path, state: dict[str, Any]) -> None:
+    for phase in state["phases"]:
+        if phase["status"] != "accepted":
+            continue
+        for kind, prefix in (("child", "child"), ("verification", "parent")):
+            digest = phase.get(f"{kind}_receipt_hash")
+            relative = phase.get(f"{kind}_receipt_path")
+            expected = f"receipts/{phase['id']}/{prefix}-{digest}.json"
+            if not isinstance(digest, str) or HASH.fullmatch(digest) is None or relative != expected:
+                raise ManagerStateError("manager stored receipt binding is invalid")
+            path = root / relative
+            if not path.resolve().is_relative_to(root.resolve()):
+                raise ManagerStateError("manager stored receipt escapes the run root")
+            _, content = _read_receipt_snapshot(path)
+            if hashlib.sha256(content).hexdigest() != digest:
+                raise ManagerStateError("manager stored receipt hash mismatch")
 
 
 def _write_trusted_receipt(path: Path, content: bytes) -> None:
@@ -906,7 +957,9 @@ def _validate_parent_verification(
     active_writer_id: str,
     implementer_thread_id: str | None,
 ) -> None:
-    if set(receipt) != PARENT_VERIFICATION_FIELDS or receipt.get("schema_version") != 1:
+    if (set(receipt) != PARENT_VERIFICATION_FIELDS
+        or type(receipt.get("schema_version")) is not int
+        or receipt["schema_version"] != 1):
         raise ManagerStateError("manager parent verification fields are invalid")
     verifier_id = receipt.get("verifier_id")
     if (
@@ -996,13 +1049,16 @@ def _positive_int(value: Any, label: str) -> int:
 
 
 def _safe_pattern(value: str) -> str:
+    if not isinstance(value, str):
+        raise ManagerStateError("manager owned path must be a string")
     normalized = value.replace("\\", "/")
     path = PurePosixPath(normalized)
     if (
         not normalized
         or normalized.startswith("/")
-        or re.match(r"^[A-Za-z]:", normalized)
-        or any(part in {"", ".", ".."} for part in path.parts)
+        or ":" in normalized
+        or any(ord(character) < 32 for character in normalized)
+        or any(part in {"", ".", ".."} for part in normalized.split("/"))
     ):
         raise ManagerStateError(f"manager owned path is unsafe: {value}")
     return path.as_posix()

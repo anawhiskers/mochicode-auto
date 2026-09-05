@@ -1,6 +1,6 @@
 ---
 name: repository-workflow-upgrader
-description: Audit and upgrade an existing repository's instruction chain, native agent configuration, and skills while preserving local knowledge, concurrent work, and host safety.
+description: Reconcile repository instructions, agents, and skills on an explicit workflow-upgrade request. Preserve project knowledge and concurrent work.
 ---
 
 # Repository Workflow Upgrader
@@ -12,10 +12,11 @@ The upgrade is a reversible repository migration, not a clean-install replacemen
 ## Scope and route
 
 1. Work from the repository root and identify the complete instruction chain before editing.
-2. Read-only inventory may stay direct. Every repository-workflow migration that writes files uses
-   the deterministic controller. Terra defines the migration contract and protected paths first.
-   The controller then assigns each declared write set to a bounded Luna worktree and serializes
-   integration. Native delegation does not perform migration writes.
+2. The direct authority parent owns repository-workflow migrations, including writes, unless a
+   concrete controller or worker trigger is present. Preserve the selected authority and effort,
+   including Astra; current session identity does not require catalog reconfirmation.
+   Add a Luna worker only for a sizable frozen independent leaf.
+   The deterministic controller remains an explicit unpromoted experiment.
 3. Keep MochiCode Auto as the only top-level workflow. This skill is a repository-migration skill,
    not a second orchestration loop.
 
@@ -32,14 +33,15 @@ The upgrade is a reversible repository migration, not a clean-install replacemen
 5. Keep the repository root instruction file concise. Move repeatable migration steps into skills and
    keep nested instructions limited to facts that are true for that directory.
 6. Reconcile agent roles against `config/role-dispositions.json` when this plugin is the source of the
-   upgrade. Consolidate duplicate planning, contract, review, and implementation roles into the four
-   core agents. Retain an optional native specialist only when its domain or coordination boundary is
+   upgrade. Consolidate roles only where duplication is established, not a mandatory five-agent
+   pipeline. Retain an optional native specialist only when its domain or coordination boundary is
    materially distinct, and document its fallback.
-7. Preserve the packet schema. Each packet must retain its identity, goal, wave, priority, vertical
+7. If the project uses controller packets, preserve the packet schema. Do not introduce packets
+   into direct work. Each existing packet must retain its identity, goal, wave, priority, vertical
    slice, dependencies, acceptance criteria, and verification hints. Contracts must retain their
    execution mode, verification class, executable argument arrays, protected patterns, allowed paths,
    and evidence requirements.
-8. Enforce one writer per file or shared state. Keep orchestration depth at one, primary Sol parent
+8. Enforce one writer per file or shared state. Keep orchestration depth at one, authority parent
    to child. Children never spawn descendants. Treat eight as a host ceiling, start with two, and
    cap normal live waves at three until larger waves earn benchmark promotion.
 9. Validate the final instruction discovery, parse every changed TOML and JSON file, run the focused
@@ -50,7 +52,7 @@ The upgrade is a reversible repository migration, not a clean-install replacemen
 
 ## Core role contract
 
-- Sol High is the default migration parent and owns repository architecture, instruction hierarchy, role consolidation, migration decisions, implementation when tightly coupled, integration, verification, and final judgment. Use Max only for consequential whole-repository migrations.
+- The selected parent retains migration, architecture, implementation, integration, and final authority at its selected effort. Sol High is a fallback, not an override of the user's choice. Escalate only for demonstrated reasoning difficulty or a consequential unresolved decision.
 - Luna Medium may implement a complete localized migration packet with hard checks. Luna Max is escalation after failed acceptance.
 - Terra is optional only inside an explicitly selected experimental controller run.
 - The deterministic controller owns persistence, queues, retries, budgets, process identity, evidence,

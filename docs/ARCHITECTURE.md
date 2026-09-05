@@ -3,18 +3,21 @@
 ```text
 ordinary Codex prompt
         |
+        +-- running selected Astra -> direct Astra authority, preserve selected effort
+        |       `-- same bounded Luna/Terra support; no automatic manager layer
+        |
         +-- trivial or one-step -> answer directly
         |
-        +-- substantive or tightly coupled -> direct Sol High
+        +-- substantive or tightly coupled -> direct selected authority
         |
-        +-- small or sequential work -> direct Sol High
+        +-- small or sequential work -> direct selected authority
         |
         +-- sizable independent implementation leaf -> proven Luna Medium child
         |
-        +-- frozen disjoint leaves + predicted saving -> Sol-led two-to-three-worker fan-out
+        +-- frozen disjoint leaves + predicted saving -> authority-led two-to-three-worker fan-out
         |
         +-- explicit Manager Mode implementation -> bounded Manager Mode beta
-        |       +-- Sol manager: goal, phase order, one replan, final judgment
+        |       +-- authority manager: goal, phase order, one replan, final judgment
         |       +-- one direct non-spawning Sol High child: sequential phase implementation
         |       `-- manager ledger: child + parent receipts, rotate, park, stop, resume
         |
@@ -30,23 +33,23 @@ ordinary Codex prompt
                 `-- Sol: final review bound to the reverified integration identity
 ```
 
-MochiCode Auto owns route selection automatically from the user's goal. Manager Mode beta activates explicitly; automatic candidates are classified in shadow until matched promotion. The heavier deterministic controller is unpromoted and never entered automatically.
+MochiCode Auto owns route selection automatically from the user's goal. Manager Mode beta activates only for an explicit Manager Mode implementation request; automatic candidates are classified in shadow until matched promotion. The heavier deterministic controller is unpromoted and never entered automatically.
 
-Native orchestration depth is one, primary Sol parent to child. Children do not delegate. Eight active children is a host ceiling, while automatic waves start with two and cap at three until larger waves earn benchmark promotion. The installed runtime is capability-probed before unsupported global agent defaults are written.
+Native policy depth is one, current selected authority to child. Children must not delegate. Ordinary native restrictions are behavioral instructions unless host tool denial is verified; configuration alone does not prove enforcement. Eight active children is a host ceiling, while automatic waves start with two and cap at three until larger waves earn benchmark promotion. The installed runtime is capability-probed before unsupported global agent defaults are written.
 
-Manager Mode uses one direct non-spawning Sol High child across sequential phases. If child creation fails before writing, ownership stays with direct Sol in the parent. Its lightweight state contains no raw goal or transcript, only hashes and bounded phase, writer, revision, receipt, usage, and status metadata.
+Manager Mode uses one direct non-spawning Sol High child across sequential phases. If child creation fails before writing, ownership stays with the current selected authority parent. Its lightweight state contains no raw goal or transcript, only hashes and bounded phase, writer, revision, receipt, usage, and status metadata.
 
 ## Release boundary
 
 The supported release is Windows-only. The release CLI, model backend, and verifier refuse non-Windows hosts before selecting or starting the POSIX/Linux supervisor. `posix_supervisor.py` is experimental containment code and is unreachable from the release entry points.
 
-## Trust boundaries
+## Experimental controller trust boundaries
 
 - The planner cannot edit the project.
 - The executor cannot choose or edit acceptance criteria, protected checks, verifier commands, or the reviewer rubric.
 - The reviewer cannot edit the project and never receives executor reasoning or trajectory.
 - The controller is the only intended writer of trusted run state and the hash-chained evidence ledger. On resume, persisted state is reconciled against the hash-bound Sol plan, receipts, attempt reservations, acceptance evidence, and pinned Git identities.
-- Child Codex runs are marked as MochiCode children and have subagent spawning disabled mechanically.
+- Controller child Codex runs are marked as MochiCode children and request subagent spawning disabled. Verify the host honors those controls before claiming mechanical enforcement; these controller settings do not establish enforcement for ordinary native children.
 - Model child environments filter API keys, provider tokens, credentials, passwords, cookies, and authentication variables. The release requires saved ChatGPT subscription authentication; missing subscription access blocks instead of falling back to an API key or API billing.
 - Configuration may choose models and budgets, but workflow data cannot remove required gates or define arbitrary loops.
 

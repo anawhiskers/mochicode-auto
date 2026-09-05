@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.6, 2026-09-05
+
+- Corrected stale routing assertions caught by exact-tag CI and restored the explicit skill-disposition reference and label wording. The v0.1.5 tag is retained as a failed release candidate; validation blocked its downloadable release.
+
+- Added selected-parent Astra support, lighter task-specific instructions, and bounded recovery without changing existing model preferences.
+- Added opt-in experimental context management with backup, configuration-preservation checks, a Windows exclusive file lock, and running-app refusal.
+- Shortened the main skill by about 24%, repaired stale workflow-upgrader routing, and fixed a starter prompt ignored by the host's metadata length limit.
+- Added recovery, context-helper, and metadata-limit tests to CI; updated the tested CLI to 0.153.4 and documented PowerShell 7 installation.
+
+- Preserve explicit context, compaction, and compatible effort during opt-in model switches; fix empty and multiline config merging.
+- Preserve the selected parent across routing surfaces, select the correct receipt schema per route, and distinguish native instructions from enforced tool restrictions.
+- Check archived receipt hashes on Manager load, archive the exact bytes validated, bind pending recovery records to their predecessor, and repair pause/resume terminal-state handling.
+- Reject ambiguous receipt paths and impossible token subtotals. Label Manager usage as accepted-phase receipts rather than whole-run usage.
+- Require exact-tag validation before release publication and require feature-critical files in verified packages.
+- Correct Git-checkout adapter commands and add subscription-specific Astra cost guidance with explicit estimation limits.
+
+### Initial Astra investigation (historical, September 4)
+
+- Added capability-gated GPT-6 Astra readiness without changing the active Sol High default.
+- Added a dormant `-AstraFirst` profile that refuses unless the live Codex catalog advertises `gpt-6-astra` with High reasoning and preserves the 1,000,000/850,000 context settings.
+- Added Astra-specific direct-first guidance for long-task coherence, explicit bounded delegation, clarification discipline, calibrated tests, tone adherence, and direct computer-use verification.
+- Kept async tool calls, mid-turn steering, and reasoning `configuration_update` behind runtime capability checks instead of simulating them with extra agents or polling.
+- Added generic exact-model readiness states and aligned portable model-catalog parsing for string and object reasoning-effort entries.
+- Recorded that Astra was not present in the local Codex 0.153.0 catalog, so live promotion and quality claims remain blocked on a matched benchmark.
+
 ## 0.1.4, 2026-09-04
 
 - Added explicit Manager Mode beta plus deterministic shadow classification for automatic promotion while preserving direct Sol for ordinary tasks.

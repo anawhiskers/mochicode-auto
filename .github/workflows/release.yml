@@ -11,7 +11,13 @@ permissions:
   attestations: write
 
 jobs:
+  validate-tag:
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+
   build-attest-release:
+    needs: validate-tag
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7

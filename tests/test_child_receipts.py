@@ -110,7 +110,7 @@ class ChildReceiptTests(unittest.TestCase):
             )
 
     def test_unowned_and_traversal_paths_are_rejected(self) -> None:
-        for path in ("../outside.txt", "C:/outside.txt", "other/unowned.py"):
+        for path in ("../outside.txt", "C:/outside.txt", "other/unowned.py", ".", "src//a.py", "src/a.py:stream"):
             with self.subTest(path=path):
                 payload = valid_receipt()
                 payload["owned_paths"] = [path]
@@ -120,6 +120,14 @@ class ChildReceiptTests(unittest.TestCase):
                         allowed_paths=("src/*.py", "tests/*.py"),
                         required_criteria=("criterion-1",),
                     )
+
+    def test_impossible_token_accounting_is_rejected(self) -> None:
+        for field in ("cached_input_tokens", "reasoning_output_tokens"):
+            with self.subTest(field=field):
+                payload = valid_receipt()
+                payload["telemetry"][field] = 101
+                with self.assertRaisesRegex(ChildReceiptError, "exceed total"):
+                    validate_child_receipt(payload, allowed_paths=("src/*.py", "tests/*.py"), required_criteria=("criterion-1",))
 
     def test_writable_globs_are_segment_aware(self) -> None:
         direct = valid_receipt()
