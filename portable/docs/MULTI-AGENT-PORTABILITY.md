@@ -4,11 +4,11 @@ This release has one model-neutral workflow core, first-class adapters for Codex
 
 ## Use on this PC
 
-Run a read-only audit first:
+From a Git checkout, run a read-only audit first. These source commands use Python directly; the `agent-sync.ps1` wrapper requires an extracted verified release package:
 
 ```powershell
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent codex
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent claude
+python -B .\scripts\agent_adapter.py audit --agent codex
+python -B .\scripts\agent_adapter.py audit --agent claude
 ```
 
 The audit returns only public model-choice fields and executable/version availability. It never reads credentials, environments, browser state, or provider session data.
@@ -16,20 +16,20 @@ The audit returns only public model-choice fields and executable/version availab
 To merge the managed workflow block into an existing instruction file, first review the audit, then use a backup-backed explicit write:
 
 ```powershell
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent claude -Apply -Confirm
+python -B .\scripts\agent_adapter.py apply --agent claude --confirm
 ```
 
 For Kimi or Z.ai, first install the client and consult its current instruction-file documentation. Then provide the exact project instruction file:
 
 ```powershell
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent kimi -Target <project-root>/AGENTS.md -Apply -Confirm
+python -B .\scripts\agent_adapter.py apply --agent kimi --target .\project\AGENTS.md --confirm
 ```
 
 For any other coding agent, use the generic adapter with the exact Markdown instruction file documented by that client:
 
 ```powershell
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent generic -Target <path-to-agent-instructions.md>
-pwsh -NoProfile -File .\agent-sync.ps1 -Agent generic -Target <path-to-agent-instructions.md> -Apply -Confirm
+python -B .\scripts\agent_adapter.py audit --agent generic --target .\project\AGENT-INSTRUCTIONS.md
+python -B .\scripts\agent_adapter.py apply --agent generic --target .\project\AGENT-INSTRUCTIONS.md --confirm
 ```
 
 The generic adapter refuses non-Markdown targets, creates a timestamped backup, preserves existing guidance outside its managed markers, and does not invent provider model IDs. If the target agent cannot prove a child model or does not support child routing, the workflow remains direct with the parent.

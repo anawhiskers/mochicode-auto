@@ -250,6 +250,34 @@
       "reasoning_effort": "high",
       "owns_final_answer": true
     },
+    "astra_candidate": {
+      "model": "gpt-6-astra",
+      "activation_status": "capability_gated_unbenchmarked",
+      "automatic_default": false,
+      "requires_live_catalog": true,
+      "required_reasoning_effort": "high",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "unsupported_efforts": ["none"],
+      "direct_when_selected": [
+        "substantive",
+        "visual_or_product",
+        "architecture",
+        "tightly_coupled",
+        "long_sequential",
+        "debugging",
+        "integration"
+      ],
+      "manager_mode_default": false,
+      "worker_policy": "reuse_existing_luna_and_terra_roles",
+      "review_fallback": "mochicode-sol",
+      "promotion_requires": [
+        "live_catalog_receipt",
+        "matched_direct_sol_comparison",
+        "equal_or_better_accepted_quality",
+        "second_distinct_confirmation"
+      ],
+      "unavailable_fallback": "direct_sol"
+    },
     "luna_medium_worker": {
       "when": [
         "sizable_independent_implementation_leaf",
@@ -298,7 +326,9 @@
         "no_proven_fanout_advantage",
         "heavier_controller_not_required"
       ],
-      "manager_model": "gpt-5.6-sol",
+      "manager_model": "current_authority_parent",
+      "manager_default_model": "gpt-5.6-sol",
+      "manager_astra_model": "gpt-6-astra",
       "manager_reasoning_effort": "high",
       "manager_escalation_effort": "max",
       "manager_may_implement_active_phase": false,

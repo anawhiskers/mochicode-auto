@@ -1,9 +1,11 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$UserHome = $env:USERPROFILE,
     [switch]$ConfirmUpdate,
     [switch]$ConfirmInstall,
-    [switch]$SkipPluginCommand
+    [switch]$SkipPluginCommand,
+    [bool]$AstraFirst = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,6 +41,9 @@ if ($ConfirmUpdate -or $ConfirmInstall) {
 }
 if ($SkipPluginCommand) {
     $parameters.SkipPluginCommand = $true
+}
+if ($AstraFirst) {
+    $parameters.AstraFirst = $true
 }
 & $install @parameters
 if (-not $?) {

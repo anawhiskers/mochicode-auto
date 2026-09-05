@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [Alias('BundleRoot')]
@@ -329,6 +330,7 @@ function Assert-PackageManifest {
         'doctor.ps1',
         'restore.ps1',
         'easy-install.ps1',
+        'agent-sync.ps1',
         'schemas/package-manifest.schema.json',
         'portable/install/package-safety.ps1',
         'portable/install/install.ps1',
@@ -336,11 +338,36 @@ function Assert-PackageManifest {
         'portable/install/doctor.ps1',
         'portable/install/restore.ps1',
         'portable/install/easy-install.ps1',
+        'portable/install/agent-sync.ps1',
         'plugin/.codex-plugin/plugin.json',
         'plugin/install.ps1',
         'plugin/restore.ps1',
         'plugin/scripts/mochicode.py',
-        'plugin/scripts/mochicode_core/cli.py'
+        'plugin/scripts/mochicode_core/cli.py',
+        'plugin/scripts/mochicode_core/manager_state.py',
+        'plugin/scripts/mochicode_core/capabilities.py',
+        'plugin/scripts/mochicode_core/child_receipts.py',
+        'plugin/scripts/adaptive_config.py',
+        'plugin/scripts/agent_adapter.py',
+        'plugin/scripts/context_trial.py',
+        'plugin/scripts/recovery_advisor.py',
+        'plugin/config/default.toml',
+        'plugin/config/role-dispositions.json',
+        'plugin/config/skill-dispositions.json',
+        'plugin/config/agents/mochicode-sol.toml',
+        'plugin/config/agents/mochicode-luna.toml',
+        'plugin/config/agents/mochicode-terra-contract.toml',
+        'plugin/config/agents/mochicode-terra-review.toml',
+        'plugin/config/agents/mochicode-manager-implementer.toml',
+        'plugin/skills/mochicode-auto/SKILL.md',
+        'plugin/skills/mochicode-auto/references/astra-mode.md',
+        'plugin/skills/mochicode-auto/references/targeted-improvement.md',
+        'plugin/skills/mochicode-auto/references/manager-mode.md',
+        'plugin/skills/repository-workflow-upgrader/SKILL.md',
+        'plugin/schemas/child-completion.schema.json',
+        'plugin/schemas/manager-child-completion.schema.json',
+        'plugin/schemas/manager-plan.schema.json',
+        'plugin/schemas/manager-verification.schema.json'
     )) {
         if (-not $paths.Contains($required)) {
             throw "Package is missing required file: $required"

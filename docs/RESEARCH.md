@@ -12,6 +12,7 @@ Sources:
 - [Git worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees)
 - [Non-interactive Codex](https://learn.chatgpt.com/docs/non-interactive-mode)
 - [GPT-5.6 model guidance](https://developers.openai.com/api/docs/guides/latest-model)
+- [GPT-6 Astra model guidance](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra)
 
 ## Traycer
 

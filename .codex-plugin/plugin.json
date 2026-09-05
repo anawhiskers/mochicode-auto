@@ -1,7 +1,7 @@
 {
   "name": "mochicode-auto",
-  "version": "0.1.4+codex.20260904121555",
-  "description": "Keep Sol direct for normal work and add bounded workers, Manager Mode, or evidence gates only when their overhead is justified.",
+  "version": "0.1.5",
+  "description": "Preserve the selected authority for normal work, add justified bounded workers or evidence gates, and use Manager Mode only for an explicit Manager Mode implementation request.",
   "author": {
     "name": "Ana Stephens"
   },
@@ -17,7 +17,7 @@
   "interface": {
     "displayName": "Mochicode Auto",
     "shortDescription": "Adaptive quality-first Codex routing",
-    "longDescription": "Preserves direct Sol High for normal work, uses Luna only for sizable independent leaves, and activates bounded Manager Mode for explicitly requested or genuinely long multi-phase projects. The Sol manager advances one receipt-backed phase at a time while deterministic state rotates failures, parks repeats, supports stop and resume, and permits one replan. Fresh verification remains risk-triggered, and the heavier controller remains experimental.",
+    "longDescription": "Preserves the current selected authority for normal work, uses Luna only for sizable independent leaves, and activates bounded Manager Mode only for an explicit Manager Mode implementation request. Automatic classification stays shadow-only. The current selected authority manager advances one receipt-backed phase at a time while deterministic state rotates failures, parks repeats, supports stop and resume, and permits one replan. Fresh verification remains risk-triggered, and the heavier controller remains experimental.",
     "developerName": "Ana Stephens",
     "category": "Productivity",
     "capabilities": [
@@ -26,8 +26,8 @@
     ],
     "defaultPrompt": [
       "Complete this goal using the smallest quality-proven automatic route.",
-      "Keep stock Sol behavior unless a proven worker route clearly repays its overhead.",
-      "Use Manager Mode, a selective worker, fresh verification, or durable state only when its observable trigger is present."
+      "Preserve the current selected authority and effort unless a proven worker route clearly repays its overhead.",
+      "Use Manager Mode only when explicitly requested; otherwise keep the selected parent and add only justified support."
     ]
   }
 }

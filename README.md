@@ -4,6 +4,8 @@ MochiCode Auto is an evidence-driven workflow router for Codex on Windows. You g
 
 The main lesson from the benchmark work is simple: **more agents are not automatically better**. Direct GPT-5.6 Sol High was often faster, cheaper, and better than elaborate orchestration. MochiCode therefore preserves direct Sol behavior by default and adds bounded workers only when the task divides cleanly.
 
+GPT-6 Astra is supported as a direct authority when selected by the user. Preserve its selected effort, keep substantive work direct, and delegate only justified independent work. Installing MochiCode does not replace an existing model preference. Sol High is a fallback for a fresh configuration, not an override of Astra. See [v0.1.5 changes and evidence](docs/ASTRA-HYGIENE-20260905.md).
+
 ## Current routing
 
 The 2026-09-02 decision benchmark confirmed direct Sol as the base route and rejected automatic fan-out plus always-on debug/TDD ceremony. Follow-up research and the v0.1.2 security pilot replaced the ordinary three-judge gate with one evidence-bound fresh verifier; three judges remain exceptional. See [the benchmark record](docs/ROUTING-BENCHMARK-20260902.md) and [research record](docs/AGENT-WORKFLOW-RESEARCH-20260902.md).
@@ -13,20 +15,23 @@ trivial conversation or one obvious action
   -> current parent, no workflow ceremony
 
 substantive, visual, architectural, coupled, or debugging work
-  -> direct GPT-5.6 Sol High
+  -> direct current selected authority (installed default: GPT-5.6 Sol High)
+
+same work when the running selected parent is GPT-6 Astra
+  -> direct Astra, preserve selected effort, no automatic manager layer
 
 sizable independent implementation leaf with executable checks
   -> one real GPT-5.6 Luna Medium child
   -> Luna Max only after failed acceptance or proven difficulty
 
 two or more frozen, disjoint leaves with a concrete expected critical-path saving
-  -> Sol-led fan-out, starting with two workers
+  -> current selected authority leads fan-out, starting with two workers
   -> normally no more than three live workers per wave
 
 observable risk or quality gate -> one fresh evidence-bound Sol verifier -> one adjudication -> at most one repair
 
 explicit Manager Mode implementation request
-  -> Sol manager plus one direct non-spawning Sol High child
+  -> current authority manager plus one direct non-spawning Sol High child
   -> independent parent verification, rotation, parking, stop/resume, and one replan
 
 qualifying automatic candidate -> shadow classification only until matched promotion
@@ -34,7 +39,7 @@ qualifying automatic candidate -> shadow classification only until matched promo
 experimental controller -> explicit selection only after promotion gates pass
 ```
 
-Native work has one writer per file or shared state. Delegation depth is one, primary Sol parent to child, and children cannot delegate. Automatic fan-out starts with two and never exceeds three live workers; eight is only a host ceiling.
+Native work has one writer per file or shared state. Policy depth is one, current selected authority to child, and children must not delegate. Ordinary native restrictions are behavioral instructions unless host tool denial has been verified; configuration or policy text alone is not proof of enforcement. Automatic fan-out starts with two and never exceeds three live workers; eight is only a host ceiling.
 
 Delegated implementation leaves use a typed JSON completion receipt. The bundled validator rejects missing acceptance evidence, unowned or unsafe paths, contradictory command exits, truncation markers, and fake `COMPLETED` claims. One malformed receipt gets one format-only correction attempt. This makes handoffs inspectable, but it does not replace parent verification or a risk-triggered fresh verifier.
 
@@ -42,7 +47,7 @@ Delegated implementation leaves use a typed JSON completion receipt. The bundled
 
 Write `[MOCHICODE_MANAGER]` or ask to execute in Manager Mode to force the beta. Mentioning it in research, review, or planning does not activate it. Automatic classification is shadow-only until matched promotion. A qualifying candidate requires implementation, 3 to 6 phases, a wave-one runnable slice, at least 6 production files across 2 components, complete phase and final oracles, frozen decisions, one sequential writer, confirmed child controls, no proven fan-out advantage, and no need for the heavier controller.
 
-The Sol manager owns direction and does not edit production code while exactly one direct `mochicode_manager_implementer` Sol High child owns all phases sequentially. Its custom agent disables multi-agent capability so it cannot spawn. Other memory, browser, and unrelated-path limits remain behavioral instructions backed by parent evidence checks, not OS isolation. The crash-recoverable local ledger keeps 3 to 12 explicit phases outside the repository, selects one breadth-first phase, binds child receipts to the exact phase, thread, and revisions, requires independent parent verification, rotates after one failure, parks after two attempts or a repeated fingerprint, supports stop/resume, and permits one replan. Child failure before writing falls back to direct Sol.
+The current authority manager owns direction and does not edit production code while exactly one direct `mochicode_manager_implementer` Sol High child owns all phases sequentially. Its custom agent requests disabling spawning with `features.multi_agent = false` and `agents.enabled = false`; confirm the active host honors these controls before claiming enforcement. Other memory, browser, and unrelated-path limits remain behavioral instructions backed by parent evidence checks, not OS isolation. The crash-recoverable local ledger keeps 3 to 12 explicit phases outside the repository, selects one breadth-first phase, binds child receipts to the exact phase, thread, and revisions, requires independent parent verification, rotates after one failure, parks after two attempts or a repeated fingerprint, supports stop/resume, and permits one replan. Child failure before writing falls back to the direct authority parent.
 
 In the [September 4 matched benchmark](docs/MANAGER-MODE-BENCHMARK-20260904.md), one blind AI judge preferred Manager Mode 9.0 to 8.4, but it used 3.33 times total input and 1.48 times wall time. It therefore remains explicit-only while automatic candidates are logged in shadow.
 
@@ -85,7 +90,7 @@ The [September 2 benchmark record](docs/ROUTING-BENCHMARK-20260902.md) contains 
 - Saved ChatGPT subscription authentication
 - Python 3.13 or newer. Python 3.11 and 3.12 cannot satisfy the required Codex Windows verifier sandbox gate.
 - Git
-- PowerShell 7 recommended
+- PowerShell 7 required for the verified portable installer (use `pwsh`, not Windows PowerShell 5.1)
 
 MochiCode does not require an API key and does not add an MCP server. It does not fall back to paid API billing.
 
@@ -94,15 +99,15 @@ MochiCode does not require an API key and does not add an MCP server. It does no
 ### From Git
 
 ```powershell
-git clone https://github.com/anawhiskers/mochicode-auto.git
+git clone --branch v0.1.5 --depth 1 https://github.com/anawhiskers/mochicode-auto.git
 cd mochicode-auto
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ConfirmInstall -DirectFirst
+pwsh -NoProfile -File .\install.ps1 -ConfirmInstall
 ```
 
 The installer creates a timestamped backup before changing an existing installation. Updating an existing copy is explicit:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -UpdateExisting -ConfirmInstall -DirectFirst
+pwsh -NoProfile -File .\install.ps1 -UpdateExisting -ConfirmInstall
 ```
 
 Run the doctor after installation:
@@ -111,24 +116,44 @@ Run the doctor after installation:
 python .\scripts\mochicode.py doctor
 ```
 
-Then start a fresh Codex task with **GPT-5.6 Sol at High** and enter your normal request. No routing phrase is needed.
+Apply installation changes while Codex desktop is closed, then start a fresh task with your selected model and normal request. No routing phrase is needed. Keep existing model, effort, context, and compaction preferences unless explicitly changing them.
+
+After `codex debug models` lists `gpt-6-astra`, the explicit Astra profile can be installed with:
+
+```powershell
+pwsh -NoProfile -File .\install.ps1 -UpdateExisting -ConfirmInstall -AstraFirst
+```
+
+The command refuses before changing configuration when its catalog probe cannot confirm Astra High. This installation gate does not override the identity or effort of an already running selected parent. Existing context/compaction and compatible effort values are preserved. Changing the default model remains explicit.
+
+### Experimental context management (opt-in)
+
+This is a Codex feature, not a claim that MochiCode increases the model's context capacity. It is off by default in this package. Check that the installed Codex build accepts the nested setting with a temporary override:
+
+```powershell
+codex -c features.context_management.experimental_mode=true features list
+```
+
+Preview the private configuration change with `python scripts/context_trial.py --config <your-config.toml>` (inside a release ZIP, use `plugin/scripts/context_trial.py`). After Codex desktop exits, repeat with `--apply`. The helper preserves unrelated values, uses a backup and an exclusive Windows file lock, and refuses ambiguous existing settings. It never copies your config into the package. This is an experimental setting with no long-context quality benchmark claimed here.
 
 ## Other coding agents
 
-The portable adapter can merge the model-neutral workflow into the documented Markdown instruction file for Codex, Claude, Kimi, Z.ai, or another coding agent. Audit first:
+The portable adapter can merge the model-neutral workflow into the documented Markdown instruction file for Codex, Claude, Kimi, Z.ai, or another coding agent. From a Git checkout, audit first:
 
 ```powershell
-pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent claude
-pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent kimi
-pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent zai
-pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent generic -Target C:\path\to\AGENT-INSTRUCTIONS.md
+python -B .\scripts\agent_adapter.py audit --agent claude
+python -B .\scripts\agent_adapter.py audit --agent kimi
+python -B .\scripts\agent_adapter.py audit --agent zai
+python -B .\scripts\agent_adapter.py audit --agent generic --target C:\path\to\AGENT-INSTRUCTIONS.md
 ```
 
 Apply only after reviewing the proposed target and backup location:
 
 ```powershell
-pwsh -NoProfile -File .\portable\install\agent-sync.ps1 -Agent generic -Target C:\path\to\AGENT-INSTRUCTIONS.md -Apply -Confirm
+python -B .\scripts\agent_adapter.py apply --agent generic --target C:\path\to\AGENT-INSTRUCTIONS.md --confirm
 ```
+
+The `agent-sync.ps1` PowerShell wrapper is for an extracted verified release package, not a Git checkout.
 
 The adapter does not copy credentials, login state, hooks, MCP endpoints, local plugin paths, or provider-specific model selections.
 
@@ -200,6 +225,6 @@ Private Google Drive package sync uses the boundary described in [docs/CLOUD-SYN
 
 ## Status
 
-Version `0.1.4` is an experimental beta. Direct Sol, bounded workers, explicit Manager Mode, typed receipts, and selective verification are usable. Automatic Manager selection remains shadow-only until the representative matched benchmark gates pass. The heavier controller remains opt-in and unpromoted.
+Version `0.1.5` is an experimental beta. Direct Sol, bounded workers, explicit Manager Mode, typed receipts, and selective verification are usable. Automatic Astra default promotion remains unproven by matched tests. An earlier local catalog snapshot omitted Astra; that historical omission does not disprove a currently running Astra session. Automatic Manager selection and the heavier controller remain unpromoted.
 
 Licensed under the [MIT License](LICENSE).

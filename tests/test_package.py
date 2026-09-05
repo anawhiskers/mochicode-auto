@@ -42,8 +42,18 @@ def _fixture(root: Path, *, categories: tuple[str, ...] = ("docs", "templates", 
     )
     _write(root / "install.ps1", "param([string]$Source, [string]$UserHome)\n")
     _write(root / "restore.ps1", "param([string]$Manifest)\n")
-    _write(root / "scripts" / "mochicode.py", "print('fixture')\n")
-    _write(root / "scripts" / "mochicode_core" / "cli.py", "print('fixture cli')\n")
+    # Package unit fixtures test structure/integrity; release smoke tests use real source.
+    for folder in ("skills", "schemas", "config"):
+        shutil.copytree(REPO_ROOT / folder, root / folder,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    for relative in (
+        "scripts/mochicode.py", "scripts/mochicode_core/cli.py",
+        "scripts/mochicode_core/manager_state.py", "scripts/mochicode_core/capabilities.py",
+        "scripts/mochicode_core/child_receipts.py", "scripts/adaptive_config.py",
+        "scripts/agent_adapter.py",
+        "scripts/context_trial.py", "scripts/recovery_advisor.py",
+    ):
+        _write(root / relative, "# Package integrity fixture, not a runnable release.\n")
     _write(root / "README.md", "Fixture plugin source.\n")
 
     if "docs" in categories:
@@ -135,6 +145,16 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(verify_folder.returncode, 0, verify_folder.stdout + verify_folder.stderr)
             verify_zip = _run_ps(VERIFY_SCRIPT, "-ZipPath", str(archive), "-Quiet")
             self.assertEqual(verify_zip.returncode, 0, verify_zip.stdout + verify_zip.stderr)
+            # A self-consistent manifest must not make a functionally incomplete bundle valid.
+            missing = "plugin/skills/mochicode-auto/SKILL.md"
+            (destination / missing).unlink()
+            manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != missing]
+            manifest["file_count"] = len(manifest["files"])
+            manifest["total_bytes"] = sum(entry["bytes"] for entry in manifest["files"])
+            (destination / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+            incomplete = _run_ps(VERIFY_SCRIPT, "-PackageRoot", str(destination), "-Quiet")
+            self.assertNotEqual(incomplete.returncode, 0)
+            self.assertIn("missing required file", incomplete.stdout + incomplete.stderr)
 
     def test_missing_required_asset_fails_before_creating_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

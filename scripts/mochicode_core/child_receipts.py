@@ -139,6 +139,10 @@ def validate_child_receipt(
     termination_reason = _bounded_string(
         telemetry["termination_reason"], "telemetry.termination_reason"
     )
+    if telemetry["cached_input_tokens"] > telemetry["input_tokens"]:
+        raise ChildReceiptError("cached input tokens exceed total input tokens")
+    if telemetry["reasoning_output_tokens"] > telemetry["output_tokens"]:
+        raise ChildReceiptError("reasoning output tokens exceed total output tokens")
 
     if status == "COMPLETED":
         if any(value != "PASS" for value in acceptance_statuses):
@@ -189,23 +193,17 @@ def _relative_path(value: str, label: str) -> str:
     if (
         not normalized
         or normalized.startswith("/")
-        or re.match(r"^[A-Za-z]:", normalized)
-        or any(part in {"", ".", ".."} for part in path.parts)
+        or ":" in normalized
+        or any(ord(character) < 32 for character in normalized)
+        or any(part in {"", ".", ".."} for part in normalized.split("/"))
     ):
         raise ChildReceiptError(f"child receipt {label} contains an unsafe path: {value}")
     return path.as_posix()
 
 
 def path_matches(path: str, pattern: str) -> bool:
-    normalized_pattern = pattern.replace("\\", "/")
-    if (
-        not normalized_pattern
-        or normalized_pattern.startswith("/")
-        or re.match(r"^[A-Za-z]:", normalized_pattern)
-        or any(part in {"", ".", ".."} for part in PurePosixPath(normalized_pattern).parts)
-    ):
-        raise ChildReceiptError(f"child receipt contains an unsafe allowed path: {pattern}")
-    path_parts = PurePosixPath(path).parts
+    normalized_pattern = _relative_path(pattern, "allowed_paths")
+    path_parts = PurePosixPath(_relative_path(path, "path")).parts
     pattern_parts = PurePosixPath(normalized_pattern).parts
 
     def match(path_index: int, pattern_index: int) -> bool:

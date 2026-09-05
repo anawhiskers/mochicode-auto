@@ -120,7 +120,36 @@ def _tree_snapshot(root: Path) -> dict[str, bytes]:
     }
 
 
-def _write_fake_codex(directory: Path, calls: Path, *, fail_load: bool = False) -> Path:
+def _write_fake_codex(
+    directory: Path,
+    calls: Path,
+    *,
+    fail_load: bool = False,
+    include_astra: bool = False,
+) -> Path:
+    models = [
+        {
+            "slug": "gpt-5.6-sol",
+            "context_window": 272000,
+            "max_context_window": 872000,
+            "supported_reasoning_levels": [
+                {"effort": effort} for effort in ("high", "max", "ultra")
+            ],
+            "service_tiers": [{"id": "priority", "name": "Fast"}],
+        }
+    ]
+    if include_astra:
+        models.append(
+            {
+                "slug": "gpt-6-astra",
+                "context_window": 1050000,
+                "max_context_window": 1050000,
+                "supported_reasoning_levels": [
+                    {"effort": effort}
+                    for effort in ("low", "medium", "high", "xhigh", "max")
+                ],
+            }
+        )
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "fake_codex.py").write_text(
         "from pathlib import Path\n"
@@ -133,7 +162,7 @@ def _write_fake_codex(directory: Path, calls: Path, *, fail_load: bool = False) 
         "if args == ['--version']:\n"
         "    print('codex-cli 0.144.0')\n"
         "elif args == ['debug', 'models']:\n"
-        "    print(json.dumps({'models': [{'slug': 'gpt-5.6-sol', 'context_window': 272000, 'max_context_window': 872000, 'supported_reasoning_levels': [{'effort': 'high'}, {'effort': 'max'}, {'effort': 'ultra'}], 'service_tiers': [{'id': 'priority', 'name': 'Fast'}]}]}))\n"
+        f"    print(json.dumps({{'models': {models!r}}}))\n"
         "elif args == ['features', 'list']:\n"
         "    count = int(CALLS.read_text(encoding='utf-8')) if CALLS.exists() else 0\n"
         "    count += 1\n"
@@ -201,6 +230,72 @@ class AdaptiveInstallerTests(unittest.TestCase):
             }
             source_roles = {path.name for path in (PLUGIN_ROOT / "config" / "agents").glob("*.toml")}
             self.assertEqual(installed_roles, source_roles)
+
+    def test_astra_first_refuses_without_live_catalog_and_applies_when_supported(self) -> None:
+        powershell = self._powershell()
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            original = (
+                b'model = "gpt-5.6-sol"\r\n'
+                b"model_context_window = 1000000\r\n"
+                b"model_auto_compact_token_limit = 850000\r\n"
+            )
+
+            unavailable_home = root / "unavailable-profile"
+            unavailable_config = unavailable_home / ".codex" / "config.toml"
+            unavailable_config.parent.mkdir(parents=True)
+            unavailable_config.write_bytes(original)
+            unavailable_shim = _write_fake_codex(
+                root / "unavailable-shim", root / "unavailable-calls"
+            )
+            unavailable = _run_install(
+                powershell,
+                PLUGIN_ROOT,
+                unavailable_home,
+                "-SkipPluginCommand",
+                "-SkipRoutingCleanup",
+                "-AstraFirst",
+                "-ConfirmInstall",
+                environment={
+                    "PATH": str(unavailable_shim.parent)
+                    + os.pathsep
+                    + os.environ.get("PATH", "")
+                },
+            )
+            self.assertNotEqual(unavailable.returncode, 0)
+            self.assertEqual(unavailable_config.read_bytes(), original)
+            self.assertIn("gpt-6-astra", unavailable.stdout + unavailable.stderr)
+
+            available_home = root / "available-profile"
+            available_config = available_home / ".codex" / "config.toml"
+            available_config.parent.mkdir(parents=True)
+            available_config.write_bytes(original)
+            available_shim = _write_fake_codex(
+                root / "available-shim",
+                root / "available-calls",
+                include_astra=True,
+            )
+            available = _run_install(
+                powershell,
+                PLUGIN_ROOT,
+                available_home,
+                "-SkipPluginCommand",
+                "-SkipRoutingCleanup",
+                "-AstraFirst",
+                "-ConfirmInstall",
+                environment={
+                    "PATH": str(available_shim.parent)
+                    + os.pathsep
+                    + os.environ.get("PATH", "")
+                },
+            )
+            self.assertEqual(available.returncode, 0, available.stderr)
+            updated = available_config.read_text(encoding="utf-8")
+            self.assertIn('model = "gpt-6-astra"', updated)
+            self.assertIn('model_reasoning_effort = "high"', updated)
+            self.assertIn("model_context_window = 1000000", updated)
+            self.assertIn("model_auto_compact_token_limit = 850000", updated)
+            self.assertIn('review_model = "gpt-5.6-sol"', updated)
 
     def test_direct_source_install_excludes_unmeasured_git_cache_and_bytecode(self) -> None:
         powershell = self._powershell()

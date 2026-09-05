@@ -1,9 +1,11 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$UserHome = $env:USERPROFILE,
     [switch]$ConfirmInstall,
     [switch]$UpdateExisting,
-    [switch]$SkipPluginCommand
+    [switch]$SkipPluginCommand,
+    [bool]$AstraFirst = $false
 )
 
 $ErrorActionPreference = 'Stop'

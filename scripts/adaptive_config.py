@@ -22,8 +22,10 @@ from typing import Any
 
 from mochicode_core.capabilities import (
     AGENT_DEFAULTS,
+    KNOWN_REASONING_EFFORTS,
     SAFE_FEATURE_DEFAULTS,
     audit_capabilities,
+    model_readiness,
     selected_model_context_bounds,
 )
 
@@ -53,7 +55,19 @@ DIRECT_FIRST_DEFAULTS: dict[str, object] = {
     "tool_output_token_limit": 10000,
     "review_model": "gpt-5.6-sol",
 }
+ASTRA_FIRST_DEFAULTS: dict[str, object] = {
+    "model": "gpt-6-astra",
+    "model_reasoning_effort": "high",
+    "model_context_window": 1_000_000,
+    "model_auto_compact_token_limit": 850_000,
+    "model_auto_compact_token_limit_scope": "total",
+    "model_reasoning_summary": "concise",
+    "model_verbosity": "low",
+    "tool_output_token_limit": 10000,
+    "review_model": "gpt-5.6-sol",
+}
 CONTEXT_KEYS = ("model_context_window", "model_auto_compact_token_limit")
+PROFILE_LIMITATION = "Only the supplied config.toml is inspected; -p profile files and runtime overrides are not resolved."
 _BARE_KEY = r"[A-Za-z0-9_-]+"
 _ASSIGNMENT_KEY = rf'(?:{_BARE_KEY}|"(?:\\.|[^"\\])*"|\'[^\']*\')'
 _ASSIGNMENT_RE = re.compile(
@@ -179,12 +193,17 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument(
         "--direct-first",
         action="store_true",
-        help="Set the benchmark-promoted Sol High parent defaults without reducing a 1M context override.",
+        help="Select Sol defaults, preserving existing context, compaction, and compatible reasoning effort.",
     )
     merge.add_argument(
         "--terra-first",
         action="store_true",
-        help="Set the supported Terra High parent defaults without reducing a 1M context override.",
+        help="Select Terra defaults, preserving existing context, compaction, and compatible reasoning effort.",
+    )
+    merge.add_argument(
+        "--astra-first",
+        action="store_true",
+        help="Select catalog-gated Astra defaults, preserving existing context, compaction, and compatible reasoning effort.",
     )
     return parser
 
@@ -215,6 +234,7 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
             remove_stale_context=args.remove_stale_context,
             direct_first=args.direct_first,
             terra_first=args.terra_first,
+            astra_first=args.astra_first,
         )
         _emit(payload, args.as_json)
         return 0
@@ -298,7 +318,7 @@ def make_audit_report(
             "unowned_values_and_bytes": "preserved",
             "secrets_emitted": False,
         },
-        "warnings": list(capabilities.get("warnings", [])),
+        "warnings": [*capabilities.get("warnings", []), PROFILE_LIMITATION],
     }
     if not capabilities.get("catalog_available"):
         payload["ok"] = False
@@ -316,6 +336,7 @@ def merge_config(
     remove_stale_context: bool = False,
     direct_first: bool = False,
     terra_first: bool = False,
+    astra_first: bool = False,
 ) -> dict[str, Any]:
     """Create a validated merged output and a redacted JSON report."""
 
@@ -342,20 +363,13 @@ def merge_config(
         "preserved_context": [],
         "set_terra_first_defaults": [],
         "set_direct_first_defaults": [],
+        "set_astra_first_defaults": [],
         "removed_default_service_tier": [],
+        "mapped_reasoning_effort": [],
     }
-    warnings: list[str] = list(capabilities.get("warnings", []))
+    warnings: list[str] = [*capabilities.get("warnings", []), PROFILE_LIMITATION]
 
     _merge_root_defaults(document, edits, changes)
-    _merge_safe_features(document, capabilities, edits, changes, warnings)
-    _merge_agent_defaults(
-        document,
-        capabilities,
-        edits,
-        changes,
-        warnings,
-        requested=enable_agent_defaults,
-    )
     _merge_mcp_disables(document, names, edits, changes)
     _remove_stale_context_if_proven(
         document,
@@ -363,14 +377,20 @@ def merge_config(
         edits,
         changes,
         warnings,
-        requested=remove_stale_context and not terra_first and not direct_first,
+        requested=(
+            remove_stale_context
+            and not terra_first
+            and not direct_first
+            and not astra_first
+        ),
     )
-    if direct_first and terra_first:
-        raise ConfigError("direct-first and terra-first cannot be selected together")
+    selected_profiles = sum(bool(value) for value in (direct_first, terra_first, astra_first))
+    if selected_profiles > 1:
+        raise ConfigError("direct-first, terra-first, and astra-first are mutually exclusive")
     if direct_first:
         if remove_stale_context:
             warnings.append(
-                "Stale context removal was skipped because direct-first activation preserves the user-requested 1,000,000-token context and 850,000-token auto-compaction settings."
+                "Stale context removal was skipped because direct-first preserves explicit context settings."
             )
         _merge_role_defaults(
             document,
@@ -380,14 +400,37 @@ def merge_config(
             defaults=DIRECT_FIRST_DEFAULTS,
             change_key="set_direct_first_defaults",
             label="Direct-first",
+            capabilities=capabilities,
         )
     if terra_first:
         if remove_stale_context:
             warnings.append(
-                "Stale context removal was skipped because Terra-first activation preserves the existing one-million-token-class context override."
+                "Stale context removal was skipped because Terra-first preserves explicit context settings."
             )
-        _merge_terra_first_defaults(document, edits, changes, warnings)
+        _merge_terra_first_defaults(document, edits, changes, warnings, capabilities)
+    if astra_first:
+        _require_astra_profile(capabilities)
+        if remove_stale_context:
+            warnings.append(
+                "Stale context removal was skipped because Astra-first preserves explicit context settings."
+            )
+        _merge_role_defaults(
+            document,
+            edits,
+            changes,
+            warnings,
+            defaults=ASTRA_FIRST_DEFAULTS,
+            change_key="set_astra_first_defaults",
+            label="Astra-first",
+            capabilities=capabilities,
+        )
 
+    # Root and newly created tables may share EOF; insert root settings first.
+    _merge_safe_features(document, capabilities, edits, changes, warnings)
+    _merge_agent_defaults(
+        document, capabilities, edits, changes, warnings,
+        requested=enable_agent_defaults,
+    )
     merged_text = edits.render()
     _validate_output_text(output_path, merged_text)
     output_bytes = (b"\xef\xbb\xbf" if document.bom else b"") + merged_text.encode(
@@ -440,6 +483,7 @@ def _merge_terra_first_defaults(
     edits: _Edits,
     changes: dict[str, Any],
     warnings: list[str],
+    capabilities: Mapping[str, Any],
 ) -> None:
     """Set only the user-authorized Terra-first root values."""
 
@@ -451,7 +495,21 @@ def _merge_terra_first_defaults(
         defaults=TERRA_FIRST_DEFAULTS,
         change_key="set_terra_first_defaults",
         label="Terra-first",
+        capabilities=capabilities,
     )
+
+
+def _require_astra_profile(capabilities: Mapping[str, Any]) -> None:
+    astra = capabilities.get("astra")
+    if (
+        not isinstance(astra, Mapping)
+        or astra.get("model") != "gpt-6-astra"
+        or astra.get("available") is not True
+        or astra.get("activation_ready") is not True
+    ):
+        raise ConfigError(
+            "Astra-first requires the installed Codex catalog to advertise gpt-6-astra with High reasoning."
+        )
 
 
 def _merge_role_defaults(
@@ -463,37 +521,54 @@ def _merge_role_defaults(
     defaults: Mapping[str, object],
     change_key: str,
     label: str,
+    capabilities: Mapping[str, Any],
 ) -> None:
-    """Set one explicit, user-authorized root model profile."""
+    """Apply an authorized model switch while preserving context and compatible effort."""
 
     insertion: list[str] = []
     for key, value in defaults.items():
+        if key in (*CONTEXT_KEYS, "model_auto_compact_token_limit_scope") and key in document.data:
+            continue
+        if key == "model_reasoning_effort" and key in document.data:
+            current = document.data[key]
+            if not isinstance(current, str) or current not in KNOWN_REASONING_EFFORTS:
+                raise ConfigError("existing reasoning effort is not a recognized effort name")
+            readiness = model_readiness(capabilities, str(defaults["model"]), current)
+            if readiness["activation_ready"]:
+                continue
+            if readiness["status"] != "effort_unsupported" or not readiness["reasoning_efforts"]:
+                warnings.append(f"{label} preserved existing reasoning effort; target catalog compatibility is unverified.")
+                continue
+            if value not in readiness["reasoning_efforts"]:
+                raise ConfigError("target catalog does not support the fallback reasoning effort")
+            changes["mapped_reasoning_effort"].append({
+                "model": defaults["model"], "from": current, "to": value,
+                "reason": "existing effort absent from target catalog reasoning_efforts",
+                "catalog_efforts": readiness["reasoning_efforts"],
+            })
+            warnings.append(f"{label} mapped unsupported reasoning effort {current} to {value} using the target catalog.")
         assignment = document.root_assignment(key)
         replacement = _toml_literal(value)
         if assignment is None:
+            if key in document.data:
+                raise ConfigError("cannot safely locate an existing root profile setting")
             insertion.append(f"{key} = {replacement}{document.newline}")
-            changes[change_key].append(key)
+        elif document.data.get(key) == value:
             continue
-        if assignment.parsed_value == value:
-            continue
-        edits.replace(
-            assignment.line_index,
-            _replace_assignment_value(
-                document.lines[assignment.line_index], assignment, replacement
-            ),
-        )
+        else:
+            if assignment.parsed_value is None:
+                raise ConfigError("cannot safely replace a multiline root profile setting")
+            edits.replace(
+                assignment.line_index,
+                _replace_assignment_value(document.lines[assignment.line_index], assignment, replacement),
+            )
         changes[change_key].append(key)
     if insertion:
         edits.insert(_first_table_index(document), insertion)
 
-    context = document.data.get("model_context_window")
-    if context in {1_000_000, 1_050_000}:
-        if "model_context_window" not in changes["preserved_context"]:
-            changes["preserved_context"].append("model_context_window")
-    elif context is not None:
-        warnings.append(
-            f"{label} activation left the existing nonstandard model_context_window unchanged."
-        )
+    for key in CONTEXT_KEYS:
+        if key in document.data and key not in changes["preserved_context"]:
+            changes["preserved_context"].append(key)
 
     service_tier = document.root_assignment("service_tier")
     if service_tier is None:
@@ -642,6 +717,8 @@ def _remove_stale_context_if_proven(
         )
         return
     limits = selected_model_context_bounds(capabilities)
+    if limits is not None and limits["slug"] != document.data.get("model"):
+        limits = None
     if limits is None:
         warnings.append(
             "Stale context removal was requested but runtime model limits were not proven."
@@ -738,12 +815,17 @@ def _scan_document(
     sections: list[Section] = []
     assignments: list[Assignment] = []
     current_section: tuple[str, ...] = ()
-    multiline_delimiter: str | None = None
+    pending = ""
 
     for index, line in enumerate(lines):
-        if multiline_delimiter is not None:
-            if _closes_multiline(line, multiline_delimiter):
-                multiline_delimiter = None
+        if pending:
+            pending += line
+            try:
+                tomllib.loads(pending)
+            except tomllib.TOMLDecodeError:
+                pass
+            else:
+                pending = ""
             continue
         header = _table_header_path(line)
         if _is_array_table_header(line):
@@ -778,7 +860,10 @@ def _scan_document(
         assignment = _assignment_from_line(index, current_section, line)
         if assignment is not None:
             assignments.append(assignment)
-        multiline_delimiter = _opens_multiline(line)
+        try:
+            tomllib.loads(line)
+        except tomllib.TOMLDecodeError:
+            pending = line
 
     return sections, assignments
 

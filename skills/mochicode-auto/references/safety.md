@@ -3,8 +3,8 @@
 - Inherit Codex host approvals and project instructions. Never weaken them.
 - Never spend money, publish, deploy, send externally, or perform destructive work without the authorization that action normally requires.
 - Use saved ChatGPT Codex authentication only. Filter API keys, tokens, credentials, passwords, cookies, and auth variables from model and verifier children. Missing subscription access is a blocker, not permission to use paid API fallback.
-- Disable child subagent spawning mechanically. The controller is the only recursive boundary.
-- Keep Sol and reviewers read-only. Use workspace-write only for Terra’s approved check-authoring step and Luna’s implementation worktree.
+- Children must never spawn descendants. Ordinary native limits are behavioral instructions unless host tool denial is verified. The Manager agent config and experimental controller request spawning disabled; confirm the host honors those settings before calling them enforced. Fall back to the selected authority before writing if required Manager controls cannot be confirmed.
+- In the experimental controller, keep its pinned Sol planner and reviewers read-only; use workspace-write only for Terra's approved check-authoring step and Luna's implementation worktree. This does not make the native selected authority read-only. The Manager implementer remains the pinned Sol High writer while its selected authority manager owns direction and verification.
 - Allow Terra to add focused check files only. It cannot modify or delete an existing test. Protect every repository-resident verifier input and reject any expanded overlap with Luna write paths.
 - Run baselines and final verifiers read-only in the Codex OS sandbox with network disabled. Shell and inline interpreter verifier forms are forbidden. Usage errors, empty collections, permission failures, crashes, and timeouts cannot count as a failing baseline.
 - Hash protected tests, packet artifacts, and integration identity before and after every relevant boundary. Any drift refuses the packet or final review.

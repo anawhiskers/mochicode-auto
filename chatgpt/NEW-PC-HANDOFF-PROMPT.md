@@ -9,7 +9,9 @@ First separate the two layers:
 
 For the local layer:
 
-- Use one writer per file or shared state. Preserve direct Sol High as the substantive default. Use Luna only for sizable independent leaves with hard checks. Explicit Manager Mode uses a Sol manager plus one direct non-spawning Sol High implementer child, deterministic phase state, and independent parent verification. Keep automatic classification shadow-only until matched promotion. Terra remains optional only in experimental controller work.
+- Use one writer per file or shared state. Preserve the selected parent and effort, including Astra. Sol High is a fresh-install fallback, not a forced override. Use Luna only for sizable independent leaves with hard checks and expected savings. Explicit Manager Mode uses one non-spawning Sol High implementer, deterministic phase state, and independent parent verification. Terra remains optional only in experimental controller work.
+- On Windows, use Python 3.13 or newer and PowerShell 7 (`pwsh`). Do not run the verified portable installer in Windows PowerShell 5.1. Keep the app closed during configuration writes.
+- Experimental context management is separately opt-in through `features.context_management.experimental_mode = true`; verify support on this laptop before enabling it. Do not copy the first computer's full configuration, runtime paths, credentials, or active task state.
 - Validate the resulting configuration and run the platform's supported status or configuration check. Report the backup, changed files, commands, exit codes, evidence, and anything still unknown. Do not restart the app automatically or claim success from a copied file alone.
 - Keep secrets, private paths, and computer-specific values out of portable files.
 

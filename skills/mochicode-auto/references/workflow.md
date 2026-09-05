@@ -4,19 +4,19 @@
 
 1. Preserve the user's real goal and define observable completion automatically.
 2. Handle trivial work directly without a child.
-3. Use direct Sol High for substantive visual, product, architectural, tightly coupled, ambiguous, or debugging work.
-4. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, context isolation, or batch volume. Independence alone is insufficient. Keep tiny or sequential work direct Sol.
-5. Fan out only frozen, disjoint leaves under a Sol parent, starting with two and capping normal waves at three.
+3. Use the direct authority parent for substantive visual, product, architectural, tightly coupled, ambiguous, or debugging work. Preserve the current selected parent and effort; Sol High is the installed default. A running Astra session remains authoritative even if a separate catalog omits it.
+4. Use a real Luna Medium child only for a sizable independent implementation leaf with a concrete expected saving from leaf size, slow verification, external build latency, context isolation, or batch volume. Independence alone is insufficient. Keep tiny or sequential work with the current selected authority.
+5. Fan out only frozen, disjoint leaves under the authority parent, starting with two and capping normal waves at three.
 6. Keep the deterministic controller manual and experimental until its published promotion gates pass.
 
 ## Native route
 
-1. Sol High is the substantive parent and may implement directly. Sol owns decisions, integration, live verification, correction, and final judgment.
-2. Sol Max is reserved for consequential whole-product, architecture, security/release, or repeated quality-failure decisions. Ultra is exceptional.
+1. The authority parent implements directly and owns decisions, integration, live verification, correction, and final judgment. The running selected parent holds this role; pinned worker and reviewer models do not replace it.
+2. Max is reserved for consequential whole-product, architecture, security/release, or repeated quality-failure decisions. Preserve the selected effort. Ultra is exceptional and may be used when the active host advertises it; do not infer host effort support from another API surface.
 3. A proven Luna Medium child implements sizable independent packets with hard checks. Luna Max is escalation-only. Parent-executed work must never be reported as Luna.
-4. Fan-out remains Sol-led. Freeze interfaces first, assign disjoint paths, and continue in waves only when the first wave earns its overhead.
+4. Fan-out remains authority-led. Freeze interfaces first, assign disjoint paths, and continue in waves only when the first wave earns its overhead.
 5. Terra is absent from the default native route and remains optional only inside an explicitly selected controller experiment.
-6. When a quality gate is warranted, one fresh evidence-bound read-only Sol High verifier runs once. Give it a compact acceptance manifest and let it request risk-specific evidence. Findings require executable reproduction or exact code or state evidence. Sol adjudicates once, permits one integrated repair, reruns the same checks, preserves human judgment for taste, and stops. Use three independent judges only for an explicit benchmark or a consequential multi-domain decision that one verifier cannot cover.
+6. When a quality gate is warranted, one fresh evidence-bound read-only Sol High verifier runs once. Give it a compact acceptance manifest and let it request risk-specific evidence. Findings require executable reproduction or exact code or state evidence. The authority parent adjudicates once, permits one integrated repair, reruns the same checks, preserves human judgment for taste, and stops. Use three independent judges only for an explicit benchmark or a consequential multi-domain decision that one verifier cannot cover.
 
 ## Task and child labels
 
@@ -41,9 +41,9 @@ Do not select this route automatically. Its current implementation remains unpro
 
 - Preserve the packet and contract schemas already in `schemas/`. Do not add routing metadata to those payloads.
 - Exactly one writer owns each file, module, configuration area, migration, or shared state.
-- Maximum orchestration depth is one, primary Sol parent to child. Children never spawn descendants.
+- Maximum policy depth is one, authority parent to child. Children must never spawn descendants. Ordinary native limits are behavioral instructions; verify host tool denial before claiming mechanical enforcement. Manager child config requests disabling spawning; config presence alone does not prove runtime enforcement.
 - Eight active child threads is a host ceiling. Start with two and never exceed three live automatic workers per wave. Total waves remain bounded by the goal, budgets, and stop conditions.
-- Implementation children return `schemas/child-completion.schema.json`. Validate each receipt against the packet's declared writable paths and criterion IDs. Permit exactly one format-only correction for malformed output, then preserve the result as `PARTIAL` or `FAILED`; never infer completion from prose.
+- Select output by route: native leaf uses `schemas/child-completion.schema.json`; Manager implementer uses `schemas/manager-child-completion.schema.json`; experimental controller uses `schemas/implementation.schema.json`. Do not apply the generic receipt schema to Manager output. Validate native and Manager receipts against declared paths and criterion IDs; permit one format-only correction, then fail closed as `PARTIAL` or `FAILED`. Never infer completion from prose.
 - Receipts stay compact and record role, model, effort, owned paths, criterion evidence, command exit codes, evidence locations, risks, stop reason, and available per-child telemetry. Schema validity proves only handoff completeness and consistency; it does not replace parent verification or a triggered fresh verifier.
 
 Parallelize only disjoint write sets and independently verifiable questions after predicting a concrete critical-path saving. Never parallelize two workers that may edit the same files, and never treat independence by itself as sufficient reason to delegate.
